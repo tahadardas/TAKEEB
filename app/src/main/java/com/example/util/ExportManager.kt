@@ -46,6 +46,7 @@ object ExportManager {
             val header = listOf(
                 "رقم السيارة",
                 "اسم السائق",
+                "رقم هاتف السائق",
                 "نوع التكوين",
                 "كمية الرأس (م³)",
                 "كمية الذنب (م³)",
@@ -68,6 +69,7 @@ object ExportManager {
                 val row = listOf(
                     entry.truckNumber,
                     entry.driverName,
+                    entry.driverPhone,
                     typeStr,
                     String.format(Locale.US, "%.2f", entry.headVolume),
                     if (entry.hasHeadAndTail) String.format(Locale.US, "%.2f", entry.tailVolume) else "0.00",
@@ -286,6 +288,7 @@ object ExportManager {
                 val item = JSONObject().apply {
                     put("truckNumber", entry.truckNumber)
                     put("driverName", entry.driverName)
+                    put("driverPhone", entry.driverPhone)
                     put("hasHeadAndTail", entry.hasHeadAndTail)
                     put("headVolume", entry.headVolume)
                     put("tailVolume", entry.tailVolume)
@@ -295,6 +298,7 @@ object ExportManager {
                     put("materialType", entry.materialType)
                     put("siteLocation", entry.siteLocation)
                     put("notes", entry.notes)
+                    put("photoPaths", entry.photoPaths)
                     put("createdAt", entry.createdAt)
                 }
                 array.put(item)
@@ -327,6 +331,7 @@ object ExportManager {
             val entry = TruckEntry(
                 truckNumber = truckNumber,
                 driverName = item.optString("driverName", ""),
+                driverPhone = item.optString("driverPhone", ""),
                 hasHeadAndTail = item.optBoolean("hasHeadAndTail", true),
                 headVolume = item.optDouble("headVolume", 0.0),
                 tailVolume = item.optDouble("tailVolume", 0.0),
@@ -336,6 +341,7 @@ object ExportManager {
                 materialType = item.optString("materialType", ""),
                 siteLocation = item.optString("siteLocation", ""),
                 notes = item.optString("notes", ""),
+                photoPaths = item.optString("photoPaths", ""),
                 createdAt = item.optLong("createdAt", System.currentTimeMillis())
             )
             list.add(entry)

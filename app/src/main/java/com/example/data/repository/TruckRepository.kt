@@ -11,6 +11,7 @@ class TruckRepository(private val dao: TruckEntryDao) {
 
     val distinctTruckNumbers: Flow<List<String>> = dao.getDistinctTruckNumbers()
     val distinctDriverNames: Flow<List<String>> = dao.getDistinctDriverNames()
+    val distinctDriverPhones: Flow<List<String>> = dao.getDistinctDriverPhones()
     val distinctMaterials: Flow<List<String>> = dao.getDistinctMaterials()
     val distinctSites: Flow<List<String>> = dao.getDistinctSites()
 
@@ -28,6 +29,9 @@ class TruckRepository(private val dao: TruckEntryDao) {
 
     suspend fun getEntryByTruckNumber(truckNumber: String): TruckEntry? =
         dao.getEntryByTruckNumber(truckNumber.trim())
+
+    suspend fun getEntryByPhone(phone: String): TruckEntry? =
+        dao.getEntryByPhone(phone.trim())
 
     suspend fun insert(entry: TruckEntry): Long = dao.insertEntry(entry)
 

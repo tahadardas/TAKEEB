@@ -1,17 +1,20 @@
 <resources>
-    <string name="app_name">تكعيب الشاحنات</string>
-    <string name="app_tagline">حساب وتوثيق تكعيب سيارات النقل</string>
+    <string name="app_name">تكعيب الغضب</string>
+    <string name="app_tagline">نظام توثيق وتكعيب سيارات النقل</string>
 
     <!-- Navigation & Tabs -->
     <string name="tab_new_entry">إدخال جديد</string>
     <string name="tab_records">سجل السيارات</string>
     <string name="tab_statistics">الإحصائيات</string>
+    <string name="tab_about">حول التطبيق</string>
 
     <!-- Form Fields -->
     <string name="field_truck_number">رقم السيارة / اللوحة</string>
     <string name="field_truck_number_hint">مثال: 12345 د ب أو أ ر 890</string>
     <string name="field_driver_name">اسم السائق</string>
     <string name="field_driver_name_hint">مثال: أحمد محمد العلي</string>
+    <string name="field_driver_phone">رقم هاتف السائق (اختياري)</string>
+    <string name="field_driver_phone_hint">مثال: 0987080330</string>
     
     <string name="field_truck_type_label">نوع تكوين الشاحنة</string>
     <string name="truck_type_head_only">رأس فقط (سيارة مفردة)</string>
@@ -98,4 +101,22 @@
     <string name="action_export_backup">مشاركة نسخة احتياطية (JSON)</string>
     <string name="action_restore_backup">استعادة وتحديث البيانات</string>
     <string name="backup_restore_hint">تقوم الاستعادة بتحديث السيارات الموجودة تلقائياً وإضافة السيارات الجديدة دون مسح أي بيانات سابقة.</string>
+
+    <!-- SMS Broadcasting & Contacts -->
+    <string name="tab_sms_broadcast">رسائل SMS والأسعار</string>
+    <string name="sms_broadcast_title">بث رسائل SMS وتحديثات الأسعار</string>
+    <string name="sms_broadcast_subtitle">إرسال نشرات أسعار المواد والتنسيق الميداني لجميع أرقام السائقين المسجلين بكبسة زر واحدة</string>
+    <string name="action_pick_contact">اختيار من جهات الاتصال</string>
+    <string name="action_select_all">تحديد الكل</string>
+    <string name="action_deselect_all">إلغاء التحديد</string>
+    <string name="action_send_sms_all">إرسال SMS لجميع السائقين المحددين</string>
+    <string name="action_send_sms_direct">إرسال SMS مباشر وفوري</string>
+    <string name="action_share_pricing_whatsapp">مشاركة عبر واتساب</string>
+    <string name="sms_message_hint">اكتب هنا نص الرسالة الموجهة للسائقين (مثال: نشرة أسعار المواد، مواقع التحميل، التنسيق...)</string>
+    <string name="price_template_title">قوالب تسعيرة المواد الجاهزة</string>
+    <string name="btn_template_materials">📋 إدراج تسعيرة المواد</string>
+    <string name="btn_template_daily_update">🚚 إدراج تحديث عمل يومي</string>
+    <string name="custom_contacts_added">جهات اتصال مضافة يدوياً: %d</string>
+    <string name="no_driver_phones_title">لا توجد أرقام هواتف مسجلة بعد</string>
+    <string name="no_driver_phones_subtitle">أدخل رقم هاتف السائق عند تسجيل السيارات أو أضف أرقاماً مباشرة من جهات اتصالك هنا</string>
 </resources>

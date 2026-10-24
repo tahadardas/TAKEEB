@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.WarningAmber
@@ -55,6 +56,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.provider.ContactsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -65,13 +73,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import com.example.util.ContactPickerHelper
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.CalcTarget
 import com.example.ui.TruckViewModel
+import com.example.ui.components.CameraPhotoSection
 import com.example.ui.theme.AmberContainerLight
 import com.example.ui.theme.CyanContainerLight
 import com.example.ui.theme.ErrorRed
@@ -87,10 +98,31 @@ fun NewEntryScreen(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+
+    // Contact Picker Launcher for driver phone and name auto-fill
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val contactUri: Uri? = result.data?.data
+            if (contactUri != null) {
+                val details = ContactPickerHelper.extractContactDetails(context, contactUri)
+                if (details != null) {
+                    val (name, phone) = details
+                    viewModel.onDriverPhoneChange(phone)
+                    if (viewModel.driverName.value.isBlank() && name.isNotBlank()) {
+                        viewModel.driverName.value = name
+                    }
+                }
+            }
+        }
+    }
 
     val editingId by viewModel.editingEntryId.collectAsState()
     val truckNumber by viewModel.truckNumber.collectAsState()
     val driverName by viewModel.driverName.collectAsState()
+    val driverPhone by viewModel.driverPhone.collectAsState()
     val hasHeadAndTail by viewModel.hasHeadAndTail.collectAsState()
     val headVolume by viewModel.headVolumeInput.collectAsState()
     val tailVolume by viewModel.tailVolumeInput.collectAsState()
@@ -113,6 +145,7 @@ fun NewEntryScreen(
     val knownMaterials by viewModel.distinctMaterials.collectAsState()
     val knownSites by viewModel.distinctSites.collectAsState()
     val duplicateEntry by viewModel.existingDuplicateEntry.collectAsState()
+    val phoneDuplicate by viewModel.existingPhoneDuplicate.collectAsState()
     val showDuplicateDialog by viewModel.showDuplicateConfirmDialog.collectAsState()
 
     val defaultMaterials = listOf("رمل", "بحص", "تراب/دفان", "حفريات", "أسفلت", "خرسانة", "كبس")
@@ -387,6 +420,111 @@ fun NewEntryScreen(
                                     onClick = { viewModel.driverName.value = dName },
                                     label = { Text(dName, fontSize = 11.sp) }
                                 )
+                            }
+                        }
+                    }
+
+                    // Driver Phone Input (Optional) with Contact Picker
+                    OutlinedTextField(
+                        value = driverPhone,
+                        onValueChange = { viewModel.onDriverPhoneChange(it) },
+                        label = { Text("رقم هاتف السائق (اختياري)") },
+                        placeholder = { Text("مثال: 0987080330") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Phone,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                        },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    val pickIntent = Intent(
+                                        Intent.ACTION_PICK,
+                                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                                    )
+                                    contactPickerLauncher.launch(pickIntent)
+                                },
+                                modifier = Modifier.testTag("pick_contact_icon_button")
+                            ) {
+                                Icon(
+                                    Icons.Default.ContactPhone,
+                                    contentDescription = "اختيار من جهات الاتصال",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("driver_phone_input")
+                    )
+
+                    // Contact Picker Quick Action Chip
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        AssistChip(
+                            onClick = {
+                                val pickIntent = Intent(
+                                    Intent.ACTION_PICK,
+                                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                                )
+                                contactPickerLauncher.launch(pickIntent)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.ContactPhone,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            label = { Text("إرفاق الرقم من جهات الاتصال", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.testTag("pick_contact_chip_button")
+                        )
+                    }
+
+                    // Duplicate Phone Warning Alert
+                    AnimatedVisibility(
+                        visible = phoneDuplicate != null && driverPhone.isNotBlank(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        phoneDuplicate?.let { existing ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = AmberContainerLight
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.WarningAmber,
+                                        contentDescription = null,
+                                        tint = OnAmberContainerLight,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "⚠️ تنبيه: رقم الهاتف هذا مسجل مسبقاً للسائق (${existing.driverName}) صاحب السيارة (${existing.truckNumber})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = OnAmberContainerLight
+                                    )
+                                }
                             }
                         }
                     }
@@ -731,6 +869,9 @@ fun NewEntryScreen(
                     }
                 }
             }
+
+            // Section: Camera Photos (من الكاميرا حصراً لجدية وتأكيد الموضوع)
+            CameraPhotoSection(viewModel = viewModel)
 
             // Section 4: Extra Details (نوع المادة والموقع والملاحظات)
             Card(

@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import com.example.data.local.dao.TruckEntryDao
 import com.example.data.local.entity.TruckEntry
 
-@Database(entities = [TruckEntry::class], version = 1, exportSchema = false)
+@Database(entities = [TruckEntry::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun truckEntryDao(): TruckEntryDao

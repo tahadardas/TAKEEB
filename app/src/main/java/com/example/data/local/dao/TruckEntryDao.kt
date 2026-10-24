@@ -22,6 +22,9 @@ interface TruckEntryDao {
         SELECT * FROM truck_entries 
         WHERE truckNumber LIKE '%' || :query || '%' 
            OR driverName LIKE '%' || :query || '%' 
+           OR driverPhone LIKE '%' || :query || '%' 
+           OR materialType LIKE '%' || :query || '%' 
+           OR siteLocation LIKE '%' || :query || '%' 
         ORDER BY createdAt DESC
     """)
     fun searchEntries(query: String): Flow<List<TruckEntry>>
@@ -32,11 +35,17 @@ interface TruckEntryDao {
     @Query("SELECT * FROM truck_entries WHERE LOWER(TRIM(truckNumber)) = LOWER(TRIM(:truckNumber)) LIMIT 1")
     suspend fun getEntryByTruckNumber(truckNumber: String): TruckEntry?
 
+    @Query("SELECT * FROM truck_entries WHERE TRIM(driverPhone) = TRIM(:phone) AND driverPhone != '' LIMIT 1")
+    suspend fun getEntryByPhone(phone: String): TruckEntry?
+
     @Query("SELECT DISTINCT truckNumber FROM truck_entries WHERE truckNumber != '' ORDER BY truckNumber ASC")
     fun getDistinctTruckNumbers(): Flow<List<String>>
 
     @Query("SELECT DISTINCT driverName FROM truck_entries WHERE driverName != '' ORDER BY driverName ASC")
     fun getDistinctDriverNames(): Flow<List<String>>
+
+    @Query("SELECT DISTINCT driverPhone FROM truck_entries WHERE driverPhone != '' ORDER BY driverPhone ASC")
+    fun getDistinctDriverPhones(): Flow<List<String>>
 
     @Query("SELECT DISTINCT materialType FROM truck_entries WHERE materialType != '' ORDER BY materialType ASC")
     fun getDistinctMaterials(): Flow<List<String>>

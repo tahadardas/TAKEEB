@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -67,8 +69,10 @@ import com.example.ui.TruckViewModel
 import com.example.ui.TruckViewModelFactory
 import com.example.ui.components.DimensionsCalculatorDialog
 import com.example.ui.components.ExportBackupDialog
+import com.example.ui.screens.AboutScreen
 import com.example.ui.screens.NewEntryScreen
 import com.example.ui.screens.RecordsListScreen
+import com.example.ui.screens.SmsBroadcastScreen
 import com.example.ui.screens.StatisticsScreen
 import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -153,12 +157,12 @@ fun TruckCubicApp(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "تكعيب الشاحنات",
+                                    text = "تكعيب الغضب",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Black
                                 )
                                 Text(
-                                    text = "حساب وتوثيق سعة السيارات والنقل",
+                                    text = "حساب وتوثيق سعة السيارات والشاحنات",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -166,6 +170,16 @@ fun TruckCubicApp(
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = { viewModel.onTabSelect(2) },
+                            modifier = Modifier.testTag("top_bar_sms_broadcast_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sms,
+                                contentDescription = "رسائل SMS والأسعار",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(
                             onClick = { viewModel.showExportBackupSheet.value = true },
                             modifier = Modifier.testTag("top_bar_export_backup_button")
@@ -192,7 +206,7 @@ fun TruckCubicApp(
                             selected = selectedTab == 0,
                             onClick = { viewModel.onTabSelect(0) },
                             icon = { Icon(Icons.Default.AddBox, contentDescription = "إدخال جديد") },
-                            label = { Text("إدخال جديد") },
+                            label = { Text("إدخال") },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -214,7 +228,7 @@ fun TruckCubicApp(
                                     Icon(Icons.Default.FormatListNumbered, contentDescription = "سجل السيارات")
                                 }
                             },
-                            label = { Text("سجل السيارات") },
+                            label = { Text("السجل") },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -225,13 +239,37 @@ fun TruckCubicApp(
                         NavigationBarItem(
                             selected = selectedTab == 2,
                             onClick = { viewModel.onTabSelect(2) },
+                            icon = { Icon(Icons.Default.Sms, contentDescription = "رسائل SMS والأسعار") },
+                            label = { Text("رسائل SMS") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            modifier = Modifier.testTag("nav_tab_sms_broadcast")
+                        )
+
+                        NavigationBarItem(
+                            selected = selectedTab == 3,
+                            onClick = { viewModel.onTabSelect(3) },
                             icon = { Icon(Icons.Default.Analytics, contentDescription = "الإحصائيات") },
-                            label = { Text("الإحصائيات") },
+                            label = { Text("إحصائيات") },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 indicatorColor = MaterialTheme.colorScheme.primaryContainer
                             ),
                             modifier = Modifier.testTag("nav_tab_statistics")
+                        )
+
+                        NavigationBarItem(
+                            selected = selectedTab == 4,
+                            onClick = { viewModel.onTabSelect(4) },
+                            icon = { Icon(Icons.Default.Info, contentDescription = "حول التطبيق") },
+                            label = { Text("حول") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            modifier = Modifier.testTag("nav_tab_about")
                         )
                     }
                 }
@@ -253,7 +291,7 @@ fun TruckCubicApp(
                             selected = selectedTab == 0,
                             onClick = { viewModel.onTabSelect(0) },
                             icon = { Icon(Icons.Default.AddBox, contentDescription = "إدخال جديد") },
-                            label = { Text("إدخال جديد") }
+                            label = { Text("إدخال") }
                         )
                         NavigationRailItem(
                             selected = selectedTab == 1,
@@ -263,13 +301,25 @@ fun TruckCubicApp(
                                     Icon(Icons.Default.FormatListNumbered, contentDescription = "سجل السيارات")
                                 }
                             },
-                            label = { Text("سجل السيارات") }
+                            label = { Text("السجل") }
                         )
                         NavigationRailItem(
                             selected = selectedTab == 2,
                             onClick = { viewModel.onTabSelect(2) },
+                            icon = { Icon(Icons.Default.Sms, contentDescription = "رسائل SMS والأسعار") },
+                            label = { Text("رسائل SMS") }
+                        )
+                        NavigationRailItem(
+                            selected = selectedTab == 3,
+                            onClick = { viewModel.onTabSelect(3) },
                             icon = { Icon(Icons.Default.Analytics, contentDescription = "الإحصائيات") },
-                            label = { Text("الإحصائيات") }
+                            label = { Text("إحصائيات") }
+                        )
+                        NavigationRailItem(
+                            selected = selectedTab == 4,
+                            onClick = { viewModel.onTabSelect(4) },
+                            icon = { Icon(Icons.Default.Info, contentDescription = "حول التطبيق") },
+                            label = { Text("حول") }
                         )
                         Spacer(modifier = Modifier.weight(1f))
                     }
@@ -285,7 +335,9 @@ fun TruckCubicApp(
                         when (tab) {
                             0 -> NewEntryScreen(viewModel = viewModel)
                             1 -> RecordsListScreen(viewModel = viewModel)
-                            2 -> StatisticsScreen(viewModel = viewModel)
+                            2 -> SmsBroadcastScreen(viewModel = viewModel)
+                            3 -> StatisticsScreen(viewModel = viewModel)
+                            4 -> AboutScreen()
                         }
                     }
                 }

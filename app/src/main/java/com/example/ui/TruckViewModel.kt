@@ -7,7 +7,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.entity.TruckEntry
 import com.example.data.repository.TruckRepository
+import com.example.util.ContactPickerHelper
 import com.example.util.ExportManager
+import com.example.util.SmsBroadcastHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +48,13 @@ enum class CalcTarget {
 
 data class UiMessage(val message: String, val isError: Boolean = false)
 
+data class DriverRecipient(
+    val phone: String,
+    val driverName: String,
+    val truckNumber: String,
+    val isCustomContact: Boolean = false
+)
+
 data class StatisticsData(
     val totalTrucks: Int = 0,
     val totalVolume: Double = 0.0,
@@ -80,6 +89,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
 
     val truckNumber = MutableStateFlow("")
     val driverName = MutableStateFlow("")
+    val driverPhone = MutableStateFlow("")
     val hasHeadAndTail = MutableStateFlow(true)
     val headVolumeInput = MutableStateFlow("")
     val tailVolumeInput = MutableStateFlow("")
@@ -89,10 +99,53 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
     val siteLocation = MutableStateFlow("")
     val notes = MutableStateFlow("")
 
+    // Captured Camera Photos (exclusive to device camera)
+    val capturedPhotos = MutableStateFlow<List<String>>(emptyList())
+    val viewingPhotoPath = MutableStateFlow<String?>(null)
+
     val truckNumberError = MutableStateFlow<String?>(null)
     val driverNameError = MutableStateFlow<String?>(null)
     val headVolumeError = MutableStateFlow<String?>(null)
     val tailVolumeError = MutableStateFlow<String?>(null)
+
+    // Detected duplicate phone number warning
+    val existingPhoneDuplicate = MutableStateFlow<TruckEntry?>(null)
+
+    // --- SMS Broadcast & Material Prices State ---
+    val smsMessageText = MutableStateFlow("")
+    val customContacts = MutableStateFlow<List<DriverRecipient>>(emptyList())
+    val selectedRecipients = MutableStateFlow<Set<String>>(emptySet())
+    val isSendingSms = MutableStateFlow(false)
+
+    // Material Pricing inputs
+    val priceSand = MutableStateFlow("")
+    val priceGravel1 = MutableStateFlow("")
+    val priceGravel2 = MutableStateFlow("")
+    val priceDust = MutableStateFlow("")
+    val priceBase = MutableStateFlow("")
+    val priceNotes = MutableStateFlow("")
+
+    // Derived distinct driver recipients from database entries combined with custom added contacts
+    val smsRecipients: StateFlow<List<DriverRecipient>> = combine(
+        repository.allEntries,
+        customContacts
+    ) { entries, custom ->
+        val fromEntries = entries
+            .filter { it.driverPhone.isNotBlank() }
+            .groupBy { ContactPickerHelper.cleanPhoneNumber(it.driverPhone) }
+            .map { (cleanPhone, list) ->
+                val latest = list.maxByOrNull { it.createdAt } ?: list.first()
+                DriverRecipient(
+                    phone = cleanPhone,
+                    driverName = latest.driverName,
+                    truckNumber = latest.truckNumber,
+                    isCustomContact = false
+                )
+            }
+        val entryPhones = fromEntries.map { it.phone }.toSet()
+        val nonDuplicatedCustom = custom.filter { it.phone !in entryPhones }
+        (fromEntries + nonDuplicatedCustom).sortedBy { it.driverName }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Autocomplete & Learned Lists ---
     val distinctTruckNumbers: StateFlow<List<String>> = repository.distinctTruckNumbers
@@ -262,6 +315,42 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         }
     }
 
+    // Real-time check for duplicate driver phone number as user types
+    fun onDriverPhoneChange(phone: String) {
+        driverPhone.value = phone
+        if (phone.isNotBlank()) {
+            viewModelScope.launch {
+                val found = repository.getEntryByPhone(phone)
+                if (found != null && (editingEntryId.value == null || editingEntryId.value != found.id)) {
+                    existingPhoneDuplicate.value = found
+                } else {
+                    existingPhoneDuplicate.value = null
+                }
+            }
+        } else {
+            existingPhoneDuplicate.value = null
+        }
+    }
+
+    // Camera photo management (exclusive to camera)
+    fun addCapturedPhoto(filePath: String) {
+        if (filePath.isNotBlank() && !capturedPhotos.value.contains(filePath)) {
+            capturedPhotos.value = capturedPhotos.value + filePath
+        }
+    }
+
+    fun removeCapturedPhoto(filePath: String) {
+        capturedPhotos.value = capturedPhotos.value.filter { it != filePath }
+    }
+
+    fun openPhotoViewer(path: String) {
+        viewingPhotoPath.value = path
+    }
+
+    fun closePhotoViewer() {
+        viewingPhotoPath.value = null
+    }
+
     /**
      * Learned profile auto-fill:
      * When selecting an existing truck or clicking 'auto-fill & update',
@@ -271,6 +360,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         editingEntryId.value = entry.id
         truckNumber.value = entry.truckNumber
         driverName.value = entry.driverName
+        driverPhone.value = entry.driverPhone
         hasHeadAndTail.value = entry.hasHeadAndTail
         headVolumeInput.value = if (entry.headVolume > 0) String.format(Locale.US, "%.2f", entry.headVolume) else ""
         tailVolumeInput.value = if (entry.tailVolume > 0) String.format(Locale.US, "%.2f", entry.tailVolume) else ""
@@ -278,8 +368,10 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         extensionDetails.value = entry.extensionDetails
         if (entry.materialType.isNotBlank()) materialType.value = entry.materialType
         if (entry.siteLocation.isNotBlank()) siteLocation.value = entry.siteLocation
+        capturedPhotos.value = entry.getPhotoList()
 
         existingDuplicateEntry.value = null
+        existingPhoneDuplicate.value = null
         showDuplicateConfirmDialog.value = false
 
         viewModelScope.launch {
@@ -347,6 +439,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         editingEntryId.value = entry.id
         truckNumber.value = entry.truckNumber
         driverName.value = entry.driverName
+        driverPhone.value = entry.driverPhone
         hasHeadAndTail.value = entry.hasHeadAndTail
         headVolumeInput.value = if (entry.headVolume > 0) String.format(Locale.US, "%.2f", entry.headVolume) else ""
         tailVolumeInput.value = if (entry.tailVolume > 0) String.format(Locale.US, "%.2f", entry.tailVolume) else ""
@@ -355,12 +448,14 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         materialType.value = entry.materialType
         siteLocation.value = entry.siteLocation
         notes.value = entry.notes
+        capturedPhotos.value = entry.getPhotoList()
 
         truckNumberError.value = null
         driverNameError.value = null
         headVolumeError.value = null
         tailVolumeError.value = null
         existingDuplicateEntry.value = null
+        existingPhoneDuplicate.value = null
 
         selectedTab.value = 0 // Switch to form tab
     }
@@ -370,6 +465,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         editingEntryId.value = entry.id // Link to existing truck to update, preventing unneeded duplicates!
         truckNumber.value = entry.truckNumber
         driverName.value = entry.driverName
+        driverPhone.value = entry.driverPhone
         hasHeadAndTail.value = entry.hasHeadAndTail
         headVolumeInput.value = if (entry.headVolume > 0) String.format(Locale.US, "%.2f", entry.headVolume) else ""
         tailVolumeInput.value = if (entry.tailVolume > 0) String.format(Locale.US, "%.2f", entry.tailVolume) else ""
@@ -378,12 +474,14 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         materialType.value = entry.materialType
         siteLocation.value = entry.siteLocation
         notes.value = ""
+        capturedPhotos.value = entry.getPhotoList()
 
         truckNumberError.value = null
         driverNameError.value = null
         headVolumeError.value = null
         tailVolumeError.value = null
         existingDuplicateEntry.value = null
+        existingPhoneDuplicate.value = null
 
         selectedTab.value = 0
         viewModelScope.launch {
@@ -395,6 +493,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         editingEntryId.value = null
         truckNumber.value = ""
         driverName.value = ""
+        driverPhone.value = ""
         hasHeadAndTail.value = true
         headVolumeInput.value = ""
         tailVolumeInput.value = ""
@@ -403,12 +502,14 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         materialType.value = ""
         siteLocation.value = ""
         notes.value = ""
+        capturedPhotos.value = emptyList()
 
         truckNumberError.value = null
         driverNameError.value = null
         headVolumeError.value = null
         tailVolumeError.value = null
         existingDuplicateEntry.value = null
+        existingPhoneDuplicate.value = null
         showDuplicateConfirmDialog.value = false
     }
 
@@ -480,11 +581,15 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
             // Either update existing or insert new
             val targetId = currentEditId ?: existingDuplicateEntry.value?.id
 
+            val dPhone = driverPhone.value.trim()
+            val photosJoined = capturedPhotos.value.joinToString(",")
+
             if (targetId != null) {
                 val updatedEntry = TruckEntry(
                     id = targetId,
                     truckNumber = tNumber,
                     driverName = dName,
+                    driverPhone = dPhone,
                     hasHeadAndTail = both,
                     headVolume = headVol,
                     tailVolume = tailVol,
@@ -493,7 +598,8 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                     extensionDetails = extensionDetails.value.trim(),
                     materialType = materialType.value.trim(),
                     siteLocation = siteLocation.value.trim(),
-                    notes = notes.value.trim()
+                    notes = notes.value.trim(),
+                    photoPaths = photosJoined
                 )
                 repository.update(updatedEntry)
                 _uiEvents.emit(UiMessage("تم تحديث بيانات السيارة المسجلة بنجاح"))
@@ -501,6 +607,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                 val newEntry = TruckEntry(
                     truckNumber = tNumber,
                     driverName = dName,
+                    driverPhone = dPhone,
                     hasHeadAndTail = both,
                     headVolume = headVol,
                     tailVolume = tailVol,
@@ -509,7 +616,8 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                     extensionDetails = extensionDetails.value.trim(),
                     materialType = materialType.value.trim(),
                     siteLocation = siteLocation.value.trim(),
-                    notes = notes.value.trim()
+                    notes = notes.value.trim(),
+                    photoPaths = photosJoined
                 )
                 repository.insert(newEntry)
                 _uiEvents.emit(UiMessage("تم حفظ بيانات السيارة والتكعيب بنجاح"))
@@ -651,6 +759,184 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                 isExporting.value = false
             }
         }
+    }
+
+    // --- SMS Broadcasting & Contact Picker Methods ---
+
+    fun selectAllRecipients() {
+        selectedRecipients.value = smsRecipients.value.map { it.phone }.toSet()
+    }
+
+    fun deselectAllRecipients() {
+        selectedRecipients.value = emptySet()
+    }
+
+    fun toggleRecipient(phone: String) {
+        val current = selectedRecipients.value.toMutableSet()
+        if (current.contains(phone)) {
+            current.remove(phone)
+        } else {
+            current.add(phone)
+        }
+        selectedRecipients.value = current
+    }
+
+    fun addCustomContact(name: String, rawPhone: String) {
+        val clean = ContactPickerHelper.cleanPhoneNumber(rawPhone)
+        if (clean.isBlank()) return
+        val existing = customContacts.value.any { it.phone == clean }
+        if (!existing) {
+            val contact = DriverRecipient(
+                phone = clean,
+                driverName = if (name.isNotBlank()) name else "سائق من جهات الاتصال",
+                truckNumber = "جهة اتصال",
+                isCustomContact = true
+            )
+            customContacts.value = customContacts.value + contact
+        }
+        selectedRecipients.value = selectedRecipients.value + clean
+        viewModelScope.launch {
+            _uiEvents.emit(UiMessage("تم إرفاق ($name - $clean) إلى قائمة الإرسال"))
+        }
+    }
+
+    fun removeCustomContact(phone: String) {
+        customContacts.value = customContacts.value.filter { it.phone != phone }
+        val updated = selectedRecipients.value.toMutableSet()
+        updated.remove(phone)
+        selectedRecipients.value = updated
+    }
+
+    fun generateMaterialPriceBulletin() {
+        val sand = priceSand.value.trim().ifEmpty { "متوفر حسب الطلب" }
+        val g1 = priceGravel1.value.trim().ifEmpty { "متوفر حسب الطلب" }
+        val g2 = priceGravel2.value.trim().ifEmpty { "متوفر حسب الطلب" }
+        val dust = priceDust.value.trim().ifEmpty { "متوفر حسب الطلب" }
+        val base = priceBase.value.trim().ifEmpty { "متوفر حسب الطلب" }
+        val extra = priceNotes.value.trim()
+
+        val text = buildString {
+            appendLine("السلام عليكم ورحمة الله، الإخوة السائقين الكرام:")
+            appendLine("📋 أسعار المواد المعتمدة لدى «تكعيب الغضب»:")
+            appendLine("• رمل ناعم ممتاز: $sand")
+            appendLine("• بحص نمرة 1: $g1")
+            appendLine("• بحص نمرة 2: $g2")
+            appendLine("• بودرة حجر: $dust")
+            appendLine("• تراب / كبس للردميات: $base")
+            if (extra.isNotBlank()) {
+                appendLine("• شروط وملاحظات: $extra")
+            }
+            appendLine("* التكعيب دقيق وموثق ميدانياً بالمتر المكعب.")
+            appendLine("للحجز والتنسيق المباشر: 0987080330")
+        }
+        smsMessageText.value = text.trim()
+    }
+
+    fun applyQuickTemplate(type: Int) {
+        when (type) {
+            1 -> {
+                smsMessageText.value = """
+                    السلام عليكم ورحمة الله،
+                    نشرة أسعار المواد اليوم لدى «تكعيب الغضب»:
+                    • رمل ناعم ممتاز
+                    • بحص بجميع مقاساته (نمرة 1 و 2)
+                    • بودرة ودفان للردميات
+                    التكعيب دقيق وموثق بالصور والكاميرا.
+                    للاستفسار والحجز: 0987080330
+                """.trimIndent()
+            }
+            2 -> {
+                smsMessageText.value = """
+                    تحية طيبة لجميع الإخوة السائقين الكرام:
+                    يرجى العلم بأن التحميل متوفر ومتاح بالموقع حالياً لجميع الشاحنات (رأس أو رأس وذنب).
+                    يرجى الالتزام بالقياس وتوثيق التكعيب الميداني.
+                    للتنسيق: 0987080330
+                """.trimIndent()
+            }
+            3 -> {
+                smsMessageText.value = ""
+            }
+        }
+    }
+
+    fun openSmsApp(context: Context) {
+        val available = smsRecipients.value.map { it.phone }
+        val recipients = if (selectedRecipients.value.isNotEmpty()) {
+            selectedRecipients.value.toList()
+        } else {
+            available
+        }
+
+        if (recipients.isEmpty()) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("لا توجد أرقام مسجلة للإرسال، يرجى إضافة رقم أو تحديد مستلم", isError = true))
+            }
+            return
+        }
+
+        val text = smsMessageText.value.trim()
+        if (text.isBlank()) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("يرجى كتابة نص الرسالة أو اختيار قالب تسعيرة قبل الإرسال", isError = true))
+            }
+            return
+        }
+
+        val success = SmsBroadcastHelper.openSmsAppForRecipients(context, recipients, text)
+        if (!success) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("تعذر فتح تطبيق الرسائل تلقائياً", isError = true))
+            }
+        }
+    }
+
+    fun sendDirectSms(context: Context) {
+        val available = smsRecipients.value.map { it.phone }
+        val recipients = if (selectedRecipients.value.isNotEmpty()) {
+            selectedRecipients.value.toList()
+        } else {
+            available
+        }
+
+        if (recipients.isEmpty()) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("لا توجد أرقام مسجلة للإرسال", isError = true))
+            }
+            return
+        }
+
+        val text = smsMessageText.value.trim()
+        if (text.isBlank()) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("يرجى كتابة نص الرسالة أولاً", isError = true))
+            }
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            isSendingSms.value = true
+            try {
+                val sent = SmsBroadcastHelper.sendDirectSms(context, recipients, text)
+                _uiEvents.emit(
+                    UiMessage("تم إرسال رسائل SMS بنجاح إلى $sent سائقاً من أصل ${recipients.size}")
+                )
+            } catch (e: Exception) {
+                _uiEvents.emit(UiMessage("فشل الإرسال المباشر: ${e.localizedMessage}", isError = true))
+            } finally {
+                isSendingSms.value = false
+            }
+        }
+    }
+
+    fun shareSmsPricing(context: Context) {
+        val text = smsMessageText.value.trim()
+        if (text.isBlank()) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("يرجى كتابة نص الرسالة أو اختيار قالب تسعيرة للمشاركة", isError = true))
+            }
+            return
+        }
+        SmsBroadcastHelper.shareViaApps(context, text)
     }
 }
 

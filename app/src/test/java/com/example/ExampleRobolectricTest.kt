@@ -18,7 +18,7 @@ class ExampleRobolectricTest {
     fun `read string from context`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val appName = context.getString(R.string.app_name)
-        assertEquals("تكعيب الشاحنات", appName)
+        assertEquals("تكعيب الغضب", appName)
     }
 
     @Test
@@ -49,5 +49,24 @@ class ExampleRobolectricTest {
         assertEquals("سالم", truck.driverName)
         assertEquals(32.5, truck.totalVolume, 0.001)
         assertTrue(truck.hasExtensions)
+    }
+
+    @Test
+    fun `test phone number cleaning`() {
+        val raw = "+963 (098) 708-0330."
+        val cleaned = com.example.util.ContactPickerHelper.cleanPhoneNumber(raw)
+        assertEquals("+9630987080330", cleaned)
+    }
+
+    @Test
+    fun `test sms metrics calculation for arabic text`() {
+        val shortArabic = "أسعار المواد اليوم"
+        val (chars, segments) = com.example.util.SmsBroadcastHelper.calculateSmsMetrics(shortArabic)
+        assertEquals(18, chars)
+        assertEquals(1, segments)
+
+        val longArabic = "أ".repeat(80)
+        val (_, longSegments) = com.example.util.SmsBroadcastHelper.calculateSmsMetrics(longArabic)
+        assertEquals(2, longSegments)
     }
 }

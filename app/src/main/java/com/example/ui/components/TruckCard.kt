@@ -2,8 +2,11 @@ package com.example.ui.components
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,23 +14,31 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -40,17 +51,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.data.local.entity.TruckEntry
 import com.example.ui.theme.AmberContainerLight
 import com.example.ui.theme.AmberPrimary
@@ -59,11 +77,9 @@ import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.ErrorRed
 import com.example.ui.theme.OnAmberContainerLight
 import com.example.ui.theme.OnCyanContainerLight
-import com.example.ui.theme.Slate700
-import com.example.ui.theme.Slate800
-import com.example.ui.theme.Slate900
 import com.example.ui.theme.SuccessGreen
 import com.example.ui.theme.SuccessGreenContainer
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -80,6 +96,9 @@ fun TruckCard(
     val context = LocalContext.current
     val dateFormatter = SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale("ar"))
     val formattedDate = dateFormatter.format(Date(entry.createdAt))
+    val photos = entry.getPhotoList()
+
+    var previewPhotoPath by remember { mutableStateOf<String?>(null) }
 
     Card(
         modifier = modifier
@@ -156,29 +175,75 @@ fun TruckCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Driver Name Row
+            // Driver Name & Phone Row
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "السائق: ${entry.driverName}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "السائق: ${entry.driverName}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                // Phone quick call / chat
+                if (entry.driverPhone.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.clickable { dialPhone(context, entry.driverPhone) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Phone,
+                                    contentDescription = "اتصال",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = entry.driverPhone,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        IconButton(
+                            onClick = { openWhatsApp(context, entry.driverPhone) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Chat,
+                                contentDescription = "واتساب",
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Chips: Type (رأس وذنب / رأس فقط) & Extensions (مع وصلات / بدون)
+            // Chips: Type, Extensions, Material, Location
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -270,6 +335,57 @@ fun TruckCard(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
+                }
+
+                // Camera photos badge chip
+                if (photos.isNotEmpty()) {
+                    AssistChip(
+                        onClick = {},
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.CameraAlt,
+                                contentDescription = null,
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        label = { Text("${photos.size} صور كاميرا حصرية", fontWeight = FontWeight.Bold, color = SuccessGreen) },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = SuccessGreenContainer
+                        )
+                    )
+                }
+            }
+
+            // Camera Photos Thumbnails Row
+            if (photos.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    photos.forEach { path ->
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable { previewPhotoPath = path }
+                        ) {
+                            AsyncImage(
+                                model = File(path),
+                                contentDescription = "صورة السيارة",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                 }
             }
 
@@ -458,6 +574,67 @@ fun TruckCard(
             }
         }
     }
+
+    // Photo preview dialog
+    if (previewPhotoPath != null) {
+        AlertDialog(
+            onDismissRequest = { previewPhotoPath = null },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "صورة الكاميرا الميدانية",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    IconButton(onClick = { previewPhotoPath = null }) {
+                        Icon(Icons.Default.Close, contentDescription = "إغلاق")
+                    }
+                }
+            },
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    AsyncImage(
+                        model = File(previewPhotoPath!!),
+                        contentDescription = "معاينة صورة السيارة",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            },
+            confirmButton = {
+                OutlinedButton(onClick = { previewPhotoPath = null }) {
+                    Text("إغلاق")
+                }
+            }
+        )
+    }
+}
+
+private fun dialPhone(context: Context, phone: String) {
+    try {
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } catch (_: Exception) {}
+}
+
+private fun openWhatsApp(context: Context, phone: String) {
+    try {
+        val clean = phone.replace("+", "").replace(" ", "").trim()
+        val url = "https://api.whatsapp.com/send?phone=$clean"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } catch (_: Exception) {}
 }
 
 private fun shareTruckReceipt(context: Context, entry: TruckEntry, formattedDate: String) {
@@ -468,11 +645,16 @@ private fun shareTruckReceipt(context: Context, entry: TruckEntry, formattedDate
         "لا (بدون وصلات)"
     }
 
+    val photos = entry.getPhotoList()
+
     val reportText = buildString {
-        appendLine("📋 إشعار قياس وتكعيب سيارة نقل 📋")
+        appendLine("📋 إشعار قياس وتكعيب - تطبيق تكعيب الغضب 📋")
         appendLine("══════════════════════════")
         appendLine("🚛 رقم السيارة: ${entry.truckNumber}")
         appendLine("👤 اسم السائق: ${entry.driverName}")
+        if (entry.driverPhone.isNotBlank()) {
+            appendLine("📞 هاتف السائق: ${entry.driverPhone}")
+        }
         appendLine("⚙️ نوع التكوين: $typeText")
         appendLine("📏 كمية الرأس: ${String.format(Locale.US, "%.2f", entry.headVolume)} م³")
         if (entry.hasHeadAndTail) {
@@ -480,6 +662,9 @@ private fun shareTruckReceipt(context: Context, entry: TruckEntry, formattedDate
         }
         appendLine("📦 إجمالي التكعيب: ${String.format(Locale.US, "%.2f", entry.totalVolume)} م³")
         appendLine("🔗 وجود وصلات: $extText")
+        if (photos.isNotEmpty()) {
+            appendLine("📷 صور التوثيق: مرفق ${photos.size} صور ملتقطة من الكاميرا حصراً")
+        }
         if (entry.materialType.isNotBlank()) {
             appendLine("🧱 نوع المادة: ${entry.materialType}")
         }
@@ -491,7 +676,7 @@ private fun shareTruckReceipt(context: Context, entry: TruckEntry, formattedDate
         }
         appendLine("🕒 التاريخ والوقت: $formattedDate")
         appendLine("══════════════════════════")
-        appendLine("تم التوثيق عبر تطبيق تكعيب الشاحنات")
+        appendLine("نظام تكعيب الغضب - هاتف المتابعة: 0987080330")
     }
 
     val sendIntent = Intent().apply {
