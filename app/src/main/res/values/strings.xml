@@ -1,0 +1,101 @@
+<resources>
+    <string name="app_name">تكعيب الشاحنات</string>
+    <string name="app_tagline">حساب وتوثيق تكعيب سيارات النقل</string>
+
+    <!-- Navigation & Tabs -->
+    <string name="tab_new_entry">إدخال جديد</string>
+    <string name="tab_records">سجل السيارات</string>
+    <string name="tab_statistics">الإحصائيات</string>
+
+    <!-- Form Fields -->
+    <string name="field_truck_number">رقم السيارة / اللوحة</string>
+    <string name="field_truck_number_hint">مثال: 12345 د ب أو أ ر 890</string>
+    <string name="field_driver_name">اسم السائق</string>
+    <string name="field_driver_name_hint">مثال: أحمد محمد العلي</string>
+    
+    <string name="field_truck_type_label">نوع تكوين الشاحنة</string>
+    <string name="truck_type_head_only">رأس فقط (سيارة مفردة)</string>
+    <string name="truck_type_head_and_tail">رأس وذنب (قاطرة ومقطورة)</string>
+    
+    <string name="field_head_volume">كمية الرأس (م³)</string>
+    <string name="field_head_volume_hint">مثال: 14.50</string>
+    <string name="field_tail_volume">كمية الذنب (م³)</string>
+    <string name="field_tail_volume_hint">مثال: 18.00</string>
+    
+    <string name="field_has_extensions">هل تحتوي السيارة على وصلات؟</string>
+    <string name="extensions_yes">تحتوي على وصلات</string>
+    <string name="extensions_no">بدون وصلات</string>
+    <string name="extensions_details_label">تفاصيل / ارتفاع الوصلات (اختياري)</string>
+    <string name="extensions_details_hint">مثال: وصلة جانبية 30 سم أو وصلتين</string>
+    
+    <string name="field_material_type">نوع المادة / الحمولة</string>
+    <string name="field_material_type_hint">مثال: رمل ناعم، بحص، حفريات، أسفلت، كبس</string>
+    <string name="field_site_location">الموقع / المشروع (اختياري)</string>
+    <string name="field_site_location_hint">مثال: مشروع البرج، محطة الخلط</string>
+    <string name="field_notes">ملاحظات إضافية (اختياري)</string>
+    <string name="field_notes_hint">أية ملاحظات حول قياس السيارة أو الحمولة</string>
+
+    <!-- Calculation & Actions -->
+    <string name="total_volume_label">إجمالي التكعيب الإجمالي:</string>
+    <string name="cubic_meter_unit">م³ (متر مكعب)</string>
+    <string name="action_save_entry">حفظ بيانات التكعيب</string>
+    <string name="action_update_entry">تحديث التكعيب</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_reset">إعادة تعيين الحقول</string>
+    <string name="action_calc_helper">حاسبة الأبعاد (طول × عرض × ارتفاع)</string>
+    <string name="calc_helper_title">حاسبة تكعيب الأبعاد بالمتر</string>
+    <string name="calc_length">الطول (متر)</string>
+    <string name="calc_width">العرض (متر)</string>
+    <string name="calc_height">الارتفاع (متر)</string>
+    <string name="calc_apply_head">تطبيق على كمية الرأس</string>
+    <string name="calc_apply_tail">تطبيق على كمية الذنب</string>
+
+    <!-- Search & Filters -->
+    <string name="search_hint">ابحث برقم السيارة أو اسم السائق...</string>
+    <string name="filter_all">الكل</string>
+    <string name="filter_head_only">رأس فقط</string>
+    <string name="filter_head_and_tail">رأس وذنب</string>
+    <string name="filter_with_extensions">مع وصلات</string>
+    <string name="filter_without_extensions">بدون وصلات</string>
+
+    <!-- List & Details -->
+    <string name="records_count">عدد السيارات المسجلة: %d</string>
+    <string name="empty_records_title">لا توجد سيارات مسجلة بعد</string>
+    <string name="empty_records_subtitle">أدخل بيانات أول شاحنة من تبويب \'إدخال جديد\' لحفظ تكعيبها</string>
+    <string name="empty_search_title">لا توجد نتائج بحث مطابقة</string>
+    <string name="empty_search_subtitle">تأكد من رقم السيارة أو اسم السائق المدخل</string>
+    <string name="action_edit">تعديل</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_share">مشاركة الفاتورة / التقرير</string>
+    <string name="action_duplicate">إدخال حمولة جديدة لنفس السيارة</string>
+    
+    <string name="confirm_delete_title">حذف سجل التكعيب</string>
+    <string name="confirm_delete_msg">هل أنت متأكد من حذف بيانات السيارة رقم %s؟ لا يمكن التراجع عن هذا الإجراء.</string>
+    
+    <!-- Statistics -->
+    <string name="stat_total_trucks">إجمالي عدد السيارات</string>
+    <string name="stat_total_volume">إجمالي التكعيب الكلي</string>
+    <string name="stat_head_volume">تكعيب الرؤوس الإجمالي</string>
+    <string name="stat_tail_volume">تكعيب الأذناب الإجمالي</string>
+    <string name="stat_avg_volume">متوسط تكعيب السيارة</string>
+    <string name="stat_with_extensions">سيارات بوصلات</string>
+    <string name="stat_head_and_tail">سيارات رأس وذنب</string>
+    <string name="stat_head_only">سيارات رأس فقط</string>
+    
+    <!-- Validation -->
+    <string name="error_truck_number_required">يرجى كتابة رقم السيارة</string>
+    <string name="error_driver_name_required">يرجى كتابة اسم السائق</string>
+    <string name="error_head_volume_invalid">يرجى إدخال كمية رأس صحيحة أكبر من صفر</string>
+    <string name="error_tail_volume_invalid">يرجى إدخال كمية ذنب صحيحة أكبر من صفر</string>
+    <string name="success_saved">تم حفظ بيانات السيارة والتكعيب بنجاح</string>
+    <string name="success_updated">تم تحديث بيانات السيارة بنجاح</string>
+    <string name="success_deleted">تم حذف السجل بنجاح</string>
+
+    <!-- Export & Backup -->
+    <string name="title_export_backup">التصدير والنسخ الاحتياطي</string>
+    <string name="action_export_pdf">تصدير تقرير PDF</string>
+    <string name="action_export_csv">تصدير ملف CSV (Excel)</string>
+    <string name="action_export_backup">مشاركة نسخة احتياطية (JSON)</string>
+    <string name="action_restore_backup">استعادة وتحديث البيانات</string>
+    <string name="backup_restore_hint">تقوم الاستعادة بتحديث السيارات الموجودة تلقائياً وإضافة السيارات الجديدة دون مسح أي بيانات سابقة.</string>
+</resources>

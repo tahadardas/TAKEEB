@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- 3D Cubic measurement boxes inside cargo -->
+    <!-- Cube 1 -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M32,38 L42,32 L52,38 L42,44 Z" />
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M32,38 L42,44 L42,52 L32,46 Z" />
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M42,44 L52,38 L52,46 L42,52 Z" />
+
+    <!-- Cubic Volume badge highlight m³ -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M56,30 L64,25 L72,30 L64,35 Z" />
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M56,30 L64,35 L64,41 L56,36 Z" />
+    <path
+        android:fillColor="#0369A1"
+        android:pathData="M64,35 L72,30 L72,36 L64,41 Z" />
+
+    <!-- Tail Trailer (ذنب) Cargo Box -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M24,46 L58,46 L58,65 L24,65 Z" />
+    <!-- Cargo Box details / vertical ribs / extensions (وصلات) -->
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M26,48 L34,48 L34,63 L26,63 Z" />
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M37,48 L45,48 L45,63 L37,63 Z" />
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M48,48 L56,48 L56,63 L48,63 Z" />
+
+    <!-- Hitch connector (وصلة) between Head and Tail -->
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M58,59 L65,59 L65,63 L58,63 Z" />
+
+    <!-- Head Cabin (رأس) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M65,50 L77,50 L84,57 L84,65 L65,65 Z" />
+    <!-- Windshield -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M68,52 L76,52 L81,57 L68,57 Z" />
+    <!-- Head bumper -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M81,63 L86,63 L86,66 L81,66 Z" />
+
+    <!-- Chassis frame -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M22,65 L85,65 L85,68 L22,68 Z" />
+
+    <!-- Wheels (Outer) -->
+    <!-- Tail Wheel 1 -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M31,71 A5,5 0 1,1 31.01,71" />
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M31,71 A2,2 0 1,1 31.01,71" />
+
+    <!-- Tail Wheel 2 -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M43,71 A5,5 0 1,1 43.01,71" />
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M43,71 A2,2 0 1,1 43.01,71" />
+
+    <!-- Head Wheel 1 (Rear) -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M67,71 A5,5 0 1,1 67.01,71" />
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M67,71 A2,2 0 1,1 67.01,71" />
+
+    <!-- Head Wheel 2 (Front) -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M78,71 A5,5 0 1,1 78.01,71" />
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M78,71 A2,2 0 1,1 78.01,71" />
+
+</vector>

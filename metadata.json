@@ -1,0 +1,6 @@
+{
+  "name": "تكعيب الشاحنات",
+  "description": "تطبيق احترافي لحساب وتوثيق تكعيب سيارات النقل والشاحنات (رأس وذنب، وصلات، بحث فوري، إحصائيات، وتصدير)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
