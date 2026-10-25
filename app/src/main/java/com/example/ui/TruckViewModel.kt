@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.entity.TruckEntry
+import com.example.data.local.entity.TruckModification
 import com.example.data.repository.TruckRepository
 import com.example.util.ContactPickerHelper
 import com.example.util.ExportManager
@@ -19,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -78,6 +81,18 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
 
     private val _selectedSort = MutableStateFlow(SortOption.NEWEST)
     val selectedSort: StateFlow<SortOption> = _selectedSort.asStateFlow()
+
+    // --- Theme State (null = System, true = Dark, false = Light) ---
+    private val _isDarkTheme = MutableStateFlow<Boolean?>(null)
+    val isDarkTheme: StateFlow<Boolean?> = _isDarkTheme.asStateFlow()
+
+    fun setDarkMode(dark: Boolean?) {
+        _isDarkTheme.value = dark
+    }
+
+    fun toggleTheme(currentIsDark: Boolean) {
+        _isDarkTheme.value = !currentIsDark
+    }
 
     // --- UI Event messages ---
     private val _uiEvents = MutableSharedFlow<UiMessage>()
@@ -195,6 +210,49 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
 
     // Loading / Exporting state
     val isExporting = MutableStateFlow(false)
+
+    // --- Truck Modifications State ---
+    val modificationCounts: StateFlow<Map<String, Int>> = repository.getModificationCounts()
+        .combine(MutableStateFlow(Unit)) { counts, _ ->
+            counts.associate { it.truckNumber.trim().lowercase(Locale.ROOT) to it.count }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val selectedTruckForModifications = MutableStateFlow<TruckEntry?>(null)
+
+    val modificationsForSelectedTruck: StateFlow<List<TruckModification>> = selectedTruckForModifications
+        .flatMapLatest { truck ->
+            if (truck != null) {
+                repository.getModificationsForTruck(truck.truckNumber)
+            } else {
+                flowOf(emptyList())
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Form state for logging a new modification
+    val showAddModificationForm = MutableStateFlow(false)
+    val newModType = MutableStateFlow("إضافة وصلة")
+    val newModHeadVolume = MutableStateFlow("")
+    val newModTailVolume = MutableStateFlow("")
+    val newModHasExtensions = MutableStateFlow(true)
+    val newModExtensionDetails = MutableStateFlow("")
+    val newModNotes = MutableStateFlow("")
+    val newModPhotos = MutableStateFlow<List<String>>(emptyList())
+    val newModHeadVolumeError = MutableStateFlow<String?>(null)
+    val newModTailVolumeError = MutableStateFlow<String?>(null)
+
+    // Dynamic calculated volume for the new modification
+    val newModCalculatedTotal: StateFlow<Double> = combine(
+        selectedTruckForModifications,
+        newModHeadVolume,
+        newModTailVolume
+    ) { truck, headStr, tailStr ->
+        val hasBoth = truck?.hasHeadAndTail ?: false
+        val head = headStr.toDoubleOrNull() ?: 0.0
+        val tail = if (hasBoth) (tailStr.toDoubleOrNull() ?: 0.0) else 0.0
+        head + tail
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     // Calculated dynamic total volume
     val calculatedTotalVolume: StateFlow<Double> = combine(
@@ -699,23 +757,38 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         }
     }
 
-    fun exportBackup(context: Context) {
+    fun exportBackup(context: Context, includePhotos: Boolean = true) {
         viewModelScope.launch(Dispatchers.IO) {
             isExporting.value = true
             try {
                 val list = repository.getAllEntriesSnapshot()
+                val mods = repository.getAllModificationsSnapshot()
                 if (list.isEmpty()) {
                     _uiEvents.emit(UiMessage("لا توجد سيارات مسجلة لإنشاء نسخة احتياطية", isError = true))
                     return@launch
                 }
-                val uri = ExportManager.createBackupJson(context, list)
-                withContext(Dispatchers.Main) {
-                    ExportManager.shareFile(
-                        context = context,
-                        fileUri = uri,
-                        mimeType = "application/json",
-                        title = "مشاركة النسخة الاحتياطية (عبر واتساب أو غيره)"
-                    )
+
+                if (includePhotos) {
+                    val uri = ExportManager.createCompressedBackupZip(context, list, mods)
+                    withContext(Dispatchers.Main) {
+                        ExportManager.shareFile(
+                            context = context,
+                            fileUri = uri,
+                            mimeType = "application/zip",
+                            title = "مشاركة النسخة الاحتياطية المضغوطة شاملة الصور (واتساب/ملفاتي)"
+                        )
+                    }
+                    _uiEvents.emit(UiMessage("تم تجهيز النسخة الاحتياطية وحفظ نسخة في مجلد فشنثثلالاشيشلا في ملفاتي"))
+                } else {
+                    val uri = ExportManager.createBackupJson(context, list, mods)
+                    withContext(Dispatchers.Main) {
+                        ExportManager.shareFile(
+                            context = context,
+                            fileUri = uri,
+                            mimeType = "application/json",
+                            title = "مشاركة نسخة احتياطية سريعة (JSON)"
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiEvents.emit(UiMessage("حدث خطأ أثناء إنشاء النسخة الاحتياطية: ${e.localizedMessage}", isError = true))
@@ -726,7 +799,40 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
     }
 
     /**
+     * Exports the native SQLite database file directly (.sqlite):
+     * Runs WAL checkpoint, saves to user's dedicated folder in My Files,
+     * and triggers instant share chooser (WhatsApp, Email, etc.).
+     */
+    fun exportSqliteDatabase(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            isExporting.value = true
+            try {
+                val list = repository.getAllEntriesSnapshot()
+                if (list.isEmpty()) {
+                    _uiEvents.emit(UiMessage("لا توجد بيانات مسجلة في قاعدة بيانات SQLite لتصديرها", isError = true))
+                    return@launch
+                }
+                val uri = ExportManager.exportSqliteDatabase(context)
+                withContext(Dispatchers.Main) {
+                    ExportManager.shareFile(
+                        context = context,
+                        fileUri = uri,
+                        mimeType = "application/x-sqlite3",
+                        title = "مشاركة ملف قاعدة بيانات SQLite الأصلي (.sqlite)"
+                    )
+                }
+                _uiEvents.emit(UiMessage("تم تجهيز نسخة قاعدة بيانات SQLite وحفظها في مجلد فشنثثلالاشيشلا في ملفاتي"))
+            } catch (e: Exception) {
+                _uiEvents.emit(UiMessage("حدث خطأ أثناء تصدير قاعدة بيانات SQLite: ${e.localizedMessage}", isError = true))
+            } finally {
+                isExporting.value = false
+            }
+        }
+    }
+
+    /**
      * Restores backup from chosen file URI:
+     * Unpacks photos (if ZIP) into photo directories,
      * MERGES and UPDATES existing records by truckNumber, ADDS new records.
      * Does NOT delete existing data!
      */
@@ -734,23 +840,15 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             isExporting.value = true
             try {
-                val inputStream = context.contentResolver.openInputStream(fileUri)
-                if (inputStream == null) {
-                    _uiEvents.emit(UiMessage("تعذر فتح ملف النسخة الاحتياطية", isError = true))
+                val result = ExportManager.restoreBackup(context, fileUri, repository)
+                if (!result.success) {
+                    _uiEvents.emit(UiMessage(result.errorMessage ?: "فشلت استعادة النسخة الاحتياطية", isError = true))
                     return@launch
                 }
 
-                val jsonContent = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                val parsedEntries = ExportManager.parseBackupJson(jsonContent)
-
-                if (parsedEntries.isEmpty()) {
-                    _uiEvents.emit(UiMessage("الملف لا يحتوي على بيانات شاحنات صالحة", isError = true))
-                    return@launch
-                }
-
-                val result = repository.upsertBackupEntries(parsedEntries)
+                val photoText = if (result.restoredPhotosCount > 0) " واستعادة ${result.restoredPhotosCount} صورة بنجاح،" else ""
                 _uiEvents.emit(
-                    UiMessage("تمت الاستعادة بنجاح: تم تحديث ${result.updatedCount} سيارة، وإضافة ${result.addedCount} سيارة جديدة بدون حذف أية بيانات سابقة!")
+                    UiMessage("تمت الاستعادة بنجاح:$photoText تم تحديث ${result.updatedCount} سيارة، وإضافة ${result.addedCount} سيارة جديدة بدون مسح أي بيانات سابقة!")
                 )
                 selectedTab.value = 1 // Switch to list
             } catch (e: Exception) {
@@ -937,6 +1035,156 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
             return
         }
         SmsBroadcastHelper.shareViaApps(context, text)
+    }
+
+    // ==========================================
+    // Truck Modification Actions
+    // ==========================================
+
+    fun openModificationsDialog(entry: TruckEntry) {
+        selectedTruckForModifications.value = entry
+        showAddModificationForm.value = false
+        clearAddModificationForm()
+    }
+
+    fun closeModificationsDialog() {
+        selectedTruckForModifications.value = null
+        showAddModificationForm.value = false
+        clearAddModificationForm()
+    }
+
+    fun openAddModificationForm() {
+        val truck = selectedTruckForModifications.value ?: return
+        newModType.value = "إضافة وصلة"
+        newModHeadVolume.value = String.format(Locale.US, "%.2f", truck.headVolume)
+        newModTailVolume.value = if (truck.hasHeadAndTail) String.format(Locale.US, "%.2f", truck.tailVolume) else ""
+        newModHasExtensions.value = true
+        newModExtensionDetails.value = truck.extensionDetails
+        newModNotes.value = ""
+        newModPhotos.value = emptyList()
+        newModHeadVolumeError.value = null
+        newModTailVolumeError.value = null
+        showAddModificationForm.value = true
+    }
+
+    fun closeAddModificationForm() {
+        showAddModificationForm.value = false
+        clearAddModificationForm()
+    }
+
+    private fun clearAddModificationForm() {
+        newModType.value = "إضافة وصلة"
+        newModHeadVolume.value = ""
+        newModTailVolume.value = ""
+        newModHasExtensions.value = true
+        newModExtensionDetails.value = ""
+        newModNotes.value = ""
+        newModPhotos.value = emptyList()
+        newModHeadVolumeError.value = null
+        newModTailVolumeError.value = null
+    }
+
+    fun onNewModTypeSelect(type: String) {
+        newModType.value = type
+        if (type == "إضافة وصلة") {
+            newModHasExtensions.value = true
+        } else if (type == "إزالة الوصلات") {
+            newModHasExtensions.value = false
+            newModExtensionDetails.value = ""
+        }
+    }
+
+    fun addNewModPhoto(filePath: String) {
+        if (filePath.isNotBlank() && !newModPhotos.value.contains(filePath)) {
+            newModPhotos.value = newModPhotos.value + filePath
+        }
+    }
+
+    fun removeNewModPhoto(filePath: String) {
+        newModPhotos.value = newModPhotos.value.filter { it != filePath }
+    }
+
+    fun saveTruckModification() {
+        val truck = selectedTruckForModifications.value ?: return
+        val headVol = newModHeadVolume.value.toDoubleOrNull()
+        if (headVol == null || headVol <= 0.0) {
+            newModHeadVolumeError.value = "يرجى إدخال كمية رأس صالحة أكبر من الصفر"
+            return
+        }
+
+        val tailVol = if (truck.hasHeadAndTail) {
+            val t = newModTailVolume.value.toDoubleOrNull()
+            if (t == null || t <= 0.0) {
+                newModTailVolumeError.value = "يرجى إدخال كمية ذنب صالحة أكبر من الصفر"
+                return
+            }
+            t
+        } else {
+            0.0
+        }
+
+        val newTotal = headVol + tailVol
+        val prevTotal = truck.totalVolume
+        val diff = newTotal - prevTotal
+
+        viewModelScope.launch {
+            val modPhotoList = newModPhotos.value
+            val modPhotosStr = modPhotoList.joinToString(",")
+
+            val modification = TruckModification(
+                truckNumber = truck.truckNumber,
+                modificationDate = System.currentTimeMillis(),
+                modificationType = newModType.value.trim().ifBlank { "تعديل القياسات" },
+                previousHeadVolume = truck.headVolume,
+                previousTailVolume = truck.tailVolume,
+                previousTotalVolume = prevTotal,
+                previousHasExtensions = truck.hasExtensions,
+                previousExtensionDetails = truck.extensionDetails,
+                newHeadVolume = headVol,
+                newTailVolume = tailVol,
+                newTotalVolume = newTotal,
+                newHasExtensions = newModHasExtensions.value,
+                newExtensionDetails = newModExtensionDetails.value.trim(),
+                volumeDifference = diff,
+                notes = newModNotes.value.trim(),
+                photoPaths = modPhotosStr
+            )
+
+            // Combine existing photos with any new modification photos
+            val combinedPhotos = (truck.getPhotoList() + modPhotoList).distinct().joinToString(",")
+
+            val updatedTruck = truck.copy(
+                headVolume = headVol,
+                tailVolume = tailVol,
+                totalVolume = newTotal,
+                hasExtensions = newModHasExtensions.value,
+                extensionDetails = newModExtensionDetails.value.trim(),
+                notes = if (newModNotes.value.isNotBlank()) {
+                    if (truck.notes.isNotBlank()) "${truck.notes} | [تعديل: ${newModNotes.value.trim()}]"
+                    else "[تعديل: ${newModNotes.value.trim()}]"
+                } else truck.notes,
+                photoPaths = combinedPhotos
+            )
+
+            repository.recordTruckModification(updatedTruck, modification)
+
+            // Update local selection to reflect latest active state
+            selectedTruckForModifications.value = updatedTruck
+            showAddModificationForm.value = false
+            clearAddModificationForm()
+
+            val diffSign = if (diff >= 0) "+${String.format(Locale.US, "%.2f", diff)}" else String.format(Locale.US, "%.2f", diff)
+            _uiEvents.emit(
+                UiMessage("تم تسجيل التعديل بنجاح! التكعيب الحالي: ${String.format(Locale.US, "%.2f", newTotal)} م³ (الفرق: $diffSign م³)")
+            )
+        }
+    }
+
+    fun deleteModification(modification: TruckModification) {
+        viewModelScope.launch {
+            repository.deleteModification(modification)
+            _uiEvents.emit(UiMessage("تم حذف سجل التعديل"))
+        }
     }
 }
 

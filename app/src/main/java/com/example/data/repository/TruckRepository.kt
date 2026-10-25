@@ -1,11 +1,18 @@
 package com.example.data.repository
 
 import com.example.data.local.dao.TruckEntryDao
+import com.example.data.local.dao.TruckModificationCount
+import com.example.data.local.dao.TruckModificationDao
 import com.example.data.local.entity.TruckEntry
+import com.example.data.local.entity.TruckModification
 import com.example.util.RestoreResult
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
-class TruckRepository(private val dao: TruckEntryDao) {
+class TruckRepository(
+    private val dao: TruckEntryDao,
+    private val modificationDao: TruckModificationDao? = null
+) {
 
     val allEntries: Flow<List<TruckEntry>> = dao.getAllEntries()
 
@@ -41,6 +48,52 @@ class TruckRepository(private val dao: TruckEntryDao) {
 
     suspend fun deleteById(id: Long) = dao.deleteEntryById(id)
 
+    // ==========================================
+    // Truck Modifications (History & Upgrades)
+    // ==========================================
+
+    fun getModificationsForTruck(truckNumber: String): Flow<List<TruckModification>> =
+        modificationDao?.getModificationsForTruck(truckNumber.trim()) ?: emptyFlow()
+
+    suspend fun getModificationsForTruckAscSnapshot(truckNumber: String): List<TruckModification> =
+        modificationDao?.getModificationsForTruckAscSnapshot(truckNumber.trim()) ?: emptyList()
+
+    fun getAllModifications(): Flow<List<TruckModification>> =
+        modificationDao?.getAllModifications() ?: emptyFlow()
+
+    suspend fun getAllModificationsSnapshot(): List<TruckModification> =
+        modificationDao?.getAllModificationsSnapshot() ?: emptyList()
+
+    fun getModificationCountForTruck(truckNumber: String): Flow<Int> =
+        modificationDao?.getModificationCountForTruck(truckNumber.trim()) ?: emptyFlow()
+
+    fun getModificationCounts(): Flow<List<TruckModificationCount>> =
+        modificationDao?.getModificationCounts() ?: emptyFlow()
+
+    suspend fun insertModification(modification: TruckModification): Long =
+        modificationDao?.insertModification(modification) ?: -1L
+
+    suspend fun deleteModification(modification: TruckModification) =
+        modificationDao?.deleteModification(modification)
+
+    suspend fun deleteModificationById(id: Long) =
+        modificationDao?.deleteModificationById(id)
+
+    suspend fun deleteModificationsForTruck(truckNumber: String) =
+        modificationDao?.deleteModificationsForTruck(truckNumber.trim())
+
+    /**
+     * Records a new modification to a truck and immediately updates
+     * the active TruckEntry in the database with the new volumes and extension state.
+     */
+    suspend fun recordTruckModification(
+        updatedEntry: TruckEntry,
+        modification: TruckModification
+    ): Long {
+        dao.updateEntry(updatedEntry)
+        return modificationDao?.insertModification(modification) ?: -1L
+    }
+
     /**
      * Smart Merge / Upsert for Backup Restoration:
      * Updates existing trucks by truckNumber, and inserts new trucks.
@@ -70,6 +123,14 @@ class TruckRepository(private val dao: TruckEntryDao) {
             updatedCount = updated,
             totalCount = entries.size
         )
+    }
+
+    /**
+     * Upsert modification records during backup restore
+     */
+    suspend fun upsertBackupModifications(modifications: List<TruckModification>) {
+        if (modificationDao == null || modifications.isEmpty()) return
+        modificationDao.insertModifications(modifications.map { it.copy(id = 0) })
     }
 
     val totalTruckCount: Flow<Int> = dao.getTruckCount()

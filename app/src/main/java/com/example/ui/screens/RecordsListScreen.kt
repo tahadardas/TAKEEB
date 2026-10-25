@@ -61,6 +61,7 @@ import com.example.ui.FilterType
 import com.example.ui.SortOption
 import com.example.ui.TruckViewModel
 import com.example.ui.components.TruckCard
+import com.example.ui.components.TruckModificationHistoryDialog
 import com.example.ui.theme.ErrorRed
 import java.util.Locale
 
@@ -74,6 +75,8 @@ fun RecordsListScreen(
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     val selectedSort by viewModel.selectedSort.collectAsState()
     val pendingDelete by viewModel.entryPendingDelete.collectAsState()
+    val modificationCounts by viewModel.modificationCounts.collectAsState()
+    val selectedTruckForModifications by viewModel.selectedTruckForModifications.collectAsState()
 
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -335,11 +338,14 @@ fun RecordsListScreen(
                         items = entries,
                         key = { it.id }
                     ) { entry ->
+                        val modCount = modificationCounts[entry.truckNumber.trim().lowercase(Locale.ROOT)] ?: 0
                         TruckCard(
                             entry = entry,
                             onEdit = { viewModel.editEntry(entry) },
                             onDelete = { viewModel.confirmDelete(entry) },
-                            onDuplicate = { viewModel.duplicateTruckData(entry) }
+                            onDuplicate = { viewModel.duplicateTruckData(entry) },
+                            modificationCount = modCount,
+                            onOpenModifications = { viewModel.openModificationsDialog(entry) }
                         )
                     }
                 }
@@ -385,6 +391,15 @@ fun RecordsListScreen(
                     Text("إلغاء")
                 }
             }
+        )
+    }
+
+    // Truck Modification History & Upgrades Dialog
+    if (selectedTruckForModifications != null) {
+        TruckModificationHistoryDialog(
+            truck = selectedTruckForModifications!!,
+            viewModel = viewModel,
+            onDismiss = { viewModel.closeModificationsDialog() }
         )
     }
 }

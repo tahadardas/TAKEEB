@@ -119,4 +119,10 @@
     <string name="custom_contacts_added">جهات اتصال مضافة يدوياً: %d</string>
     <string name="no_driver_phones_title">لا توجد أرقام هواتف مسجلة بعد</string>
     <string name="no_driver_phones_subtitle">أدخل رقم هاتف السائق عند تسجيل السيارات أو أضف أرقاماً مباشرة من جهات اتصالك هنا</string>
+
+    <!-- Truck Modifications & Box Upgrades -->
+    <string name="title_truck_modifications">سجل تعديلات السيارة</string>
+    <string name="action_open_modifications">سجل التعديلات</string>
+    <string name="action_add_modification">تسجيل تعديل جديد للشاحنة</string>
+    <string name="badge_modified_count">معدّلة (%d مرات)</string>
 </resources>

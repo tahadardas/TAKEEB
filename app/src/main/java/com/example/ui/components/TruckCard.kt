@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Chat
@@ -32,15 +33,19 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -91,6 +96,8 @@ fun TruckCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
+    modificationCount: Int = 0,
+    onOpenModifications: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -254,8 +261,8 @@ fun TruckCard(
                         onClick = {},
                         label = { Text("رأس وذنب", fontWeight = FontWeight.Bold) },
                         colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = AmberContainerLight,
-                            labelColor = OnAmberContainerLight
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
                         ),
                         border = null
                     )
@@ -264,8 +271,8 @@ fun TruckCard(
                         onClick = {},
                         label = { Text("رأس فقط", fontWeight = FontWeight.Bold) },
                         colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = CyanContainerLight,
-                            labelColor = OnCyanContainerLight
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ),
                         border = null
                     )
@@ -352,6 +359,31 @@ fun TruckCard(
                         label = { Text("${photos.size} صور كاميرا حصرية", fontWeight = FontWeight.Bold, color = SuccessGreen) },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = SuccessGreenContainer
+                        )
+                    )
+                }
+
+                // Modifications history badge chip
+                if (modificationCount > 0) {
+                    AssistChip(
+                        onClick = onOpenModifications,
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Build,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                "معدّلة ($modificationCount مرات)",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                         )
                     )
                 }
@@ -508,66 +540,155 @@ fun TruckCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Action Buttons Row
-            Row(
+            // Action Buttons Section (No vertical squishing, robust RTL layout)
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row {
-                    // Edit
+                // Primary Workflow Actions Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Edit Button
                     FilledTonalButton(
                         onClick = onEdit,
-                        modifier = Modifier.testTag("edit_truck_${entry.id}")
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("edit_truck_${entry.id}"),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
                     ) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("تعديل", fontSize = 12.sp)
+                        Text(
+                            text = "تعديل",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Duplicate / New load
+                    // Duplicate / Second load
                     OutlinedButton(
                         onClick = onDuplicate,
-                        modifier = Modifier.testTag("duplicate_truck_${entry.id}")
+                        modifier = Modifier
+                            .weight(1.15f)
+                            .testTag("duplicate_truck_${entry.id}"),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
                     ) {
                         Icon(
                             Icons.Default.AddCircleOutline,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("حمولة ثانية", fontSize = 12.sp)
+                        Text(
+                            text = "حمولة ثانية",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+
+                    // Modifications History / Box Upgrade button
+                    val hasMods = modificationCount > 0
+                    Button(
+                        onClick = onOpenModifications,
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .testTag("modifications_truck_${entry.id}"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = if (hasMods) {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            ButtonDefaults.outlinedButtonColors()
+                        },
+                        border = if (hasMods) null else ButtonDefaults.outlinedButtonBorder,
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Build,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        val btnText = if (hasMods) "التعديلات ($modificationCount)" else "تعديل الصندوق"
+                        Text(
+                            text = btnText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
 
-                Row {
-                    // Share Receipt / Report
-                    IconButton(
+                // Secondary Actions Row: Share Receipt & Delete
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
                         onClick = { shareTruckReceipt(context, entry, formattedDate) },
-                        modifier = Modifier.testTag("share_truck_${entry.id}")
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("share_truck_${entry.id}"),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             Icons.Default.Share,
-                            contentDescription = "مشاركة",
-                            tint = MaterialTheme.colorScheme.primary
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "مشاركة إشعار التكعيب",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
 
-                    // Delete
-                    IconButton(
+                    OutlinedButton(
                         onClick = onDelete,
-                        modifier = Modifier.testTag("delete_truck_${entry.id}")
+                        modifier = Modifier
+                            .testTag("delete_truck_${entry.id}"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRed),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             Icons.Default.DeleteOutline,
-                            contentDescription = "حذف",
-                            tint = ErrorRed
+                            contentDescription = null,
+                            tint = ErrorRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "حذف",
+                            fontSize = 12.sp,
+                            color = ErrorRed,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }

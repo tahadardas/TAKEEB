@@ -85,8 +85,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.TruckViewModel
-import com.example.ui.theme.AmberContainerLight
-import com.example.ui.theme.OnAmberContainerLight
 import com.example.ui.theme.SuccessGreen
 import com.example.util.ContactPickerHelper
 import com.example.util.SmsBroadcastHelper

@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -11,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -27,8 +29,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.Badge
@@ -81,19 +85,41 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: TruckViewModel by viewModels {
         val database = AppDatabase.getDatabase(applicationContext)
-        val repository = TruckRepository(database.truckEntryDao())
+        val repository = TruckRepository(
+            dao = database.truckEntryDao(),
+            modificationDao = database.truckModificationDao()
+        )
         TruckViewModelFactory(repository)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.example.util.AppFolderManager.initializeFolders(applicationContext)
+
+        // Load saved theme preference
+        val prefs = getSharedPreferences("app_theme_prefs", Context.MODE_PRIVATE)
+        val savedTheme = if (prefs.contains("is_dark")) prefs.getBoolean("is_dark", false) else null
+        viewModel.setDarkMode(savedTheme)
 
         setContent {
-            MyApplicationTheme {
+            val isDarkThemePref by viewModel.isDarkTheme.collectAsState()
+            val systemDark = isSystemInDarkTheme()
+            val isDark = isDarkThemePref ?: systemDark
+
+            // Persist theme changes
+            LaunchedEffect(isDarkThemePref) {
+                if (isDarkThemePref == null) {
+                    prefs.edit().remove("is_dark").apply()
+                } else {
+                    prefs.edit().putBoolean("is_dark", isDarkThemePref!!).apply()
+                }
+            }
+
+            MyApplicationTheme(darkTheme = isDark) {
                 // Set Arabic RTL Layout Direction
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    TruckCubicApp(viewModel = viewModel)
+                    TruckCubicApp(viewModel = viewModel, isDarkTheme = isDark)
                 }
             }
         }
@@ -104,6 +130,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TruckCubicApp(
     viewModel: TruckViewModel,
+    isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
     val selectedTab by viewModel.selectedTab.collectAsState()
@@ -170,6 +197,18 @@ fun TruckCubicApp(
                         }
                     },
                     actions = {
+                        // Day / Night Theme Quick Toggle
+                        IconButton(
+                            onClick = { viewModel.toggleTheme(isDarkTheme) },
+                            modifier = Modifier.testTag("top_bar_theme_toggle_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = if (isDarkTheme) "التحويل إلى المظهر النهاري" else "التحويل إلى المظهر الليلي",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
                         IconButton(
                             onClick = { viewModel.onTabSelect(2) },
                             modifier = Modifier.testTag("top_bar_sms_broadcast_button")
@@ -200,6 +239,7 @@ fun TruckCubicApp(
                 if (!isWideScreen) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 3.dp,
                         modifier = Modifier.testTag("bottom_nav_bar")
                     ) {
                         NavigationBarItem(
@@ -337,7 +377,7 @@ fun TruckCubicApp(
                             1 -> RecordsListScreen(viewModel = viewModel)
                             2 -> SmsBroadcastScreen(viewModel = viewModel)
                             3 -> StatisticsScreen(viewModel = viewModel)
-                            4 -> AboutScreen()
+                            4 -> AboutScreen(viewModel = viewModel)
                         }
                     }
                 }

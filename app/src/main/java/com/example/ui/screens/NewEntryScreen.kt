@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Refresh
@@ -54,6 +56,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import android.app.Activity
@@ -142,14 +145,9 @@ fun NewEntryScreen(
     // Smart Auto-complete / Learned suggestions
     val truckSuggestions by viewModel.truckNumberSuggestions.collectAsState()
     val driverSuggestions by viewModel.driverNameSuggestions.collectAsState()
-    val knownMaterials by viewModel.distinctMaterials.collectAsState()
-    val knownSites by viewModel.distinctSites.collectAsState()
     val duplicateEntry by viewModel.existingDuplicateEntry.collectAsState()
     val phoneDuplicate by viewModel.existingPhoneDuplicate.collectAsState()
     val showDuplicateDialog by viewModel.showDuplicateConfirmDialog.collectAsState()
-
-    val defaultMaterials = listOf("رمل", "بحص", "تراب/دفان", "حفريات", "أسفلت", "خرسانة", "كبس")
-    val combinedMaterials = (defaultMaterials + knownMaterials).distinct()
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -168,7 +166,7 @@ fun NewEntryScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = AmberContainerLight
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -183,7 +181,7 @@ fun NewEntryScreen(
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = OnAmberContainerLight,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -191,7 +189,7 @@ fun NewEntryScreen(
                                 text = "تعديل وتحديث بيانات السيارة رقم ($truckNumber)",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = OnAmberContainerLight
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                         IconButton(
@@ -201,7 +199,7 @@ fun NewEntryScreen(
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = "إلغاء التعديل",
-                                tint = OnAmberContainerLight
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
@@ -211,40 +209,68 @@ fun NewEntryScreen(
             // Section 1: Identification & Smart Auto-Fill
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "1. بيانات السيارة والسائق",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "1",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "إكمال ذكي مانع للتكرار",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "بيانات السيارة والسائق",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "إكمال ذكي",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
 
@@ -261,6 +287,15 @@ fun NewEntryScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        ),
                         isError = truckNumberError != null,
                         supportingText = {
                             if (truckNumberError != null) {
@@ -321,7 +356,7 @@ fun NewEntryScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = AmberContainerLight
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -335,7 +370,7 @@ fun NewEntryScreen(
                                         Icon(
                                             Icons.Default.WarningAmber,
                                             contentDescription = null,
-                                            tint = OnAmberContainerLight,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -343,14 +378,14 @@ fun NewEntryScreen(
                                             text = "هذه السيارة مسجلة مسبقاً للسائق (${existing.driverName})!",
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = OnAmberContainerLight
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                     }
 
                                     Text(
                                         text = "لمنع تكرار رقم السيارة مرتين، يمكنك استرجاع بياناتها وتحديث القياس الحالي مباشرة:",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = OnAmberContainerLight
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
 
                                     Button(
@@ -389,6 +424,15 @@ fun NewEntryScreen(
                                 tint = MaterialTheme.colorScheme.secondary
                             )
                         },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                            focusedLabelColor = MaterialTheme.colorScheme.secondary,
+                            cursorColor = MaterialTheme.colorScheme.secondary
+                        ),
                         isError = driverNameError != null,
                         supportingText = {
                             if (driverNameError != null) {
@@ -455,6 +499,15 @@ fun NewEntryScreen(
                                 )
                             }
                         },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                            focusedLabelColor = MaterialTheme.colorScheme.secondary,
+                            cursorColor = MaterialTheme.colorScheme.secondary
+                        ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         singleLine = true,
                         modifier = Modifier
@@ -501,7 +554,7 @@ fun NewEntryScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = AmberContainerLight
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
@@ -514,7 +567,7 @@ fun NewEntryScreen(
                                     Icon(
                                         Icons.Default.WarningAmber,
                                         contentDescription = null,
-                                        tint = OnAmberContainerLight,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -522,7 +575,7 @@ fun NewEntryScreen(
                                         text = "⚠️ تنبيه: رقم الهاتف هذا مسجل مسبقاً للسائق (${existing.driverName}) صاحب السيارة (${existing.truckNumber})",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = OnAmberContainerLight
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
                             }
@@ -534,28 +587,50 @@ fun NewEntryScreen(
             // Section 2: Truck Configuration & Cubic Volume (رأس وذنب / رأس فقط)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text(
-                        text = "2. تكوين السيارة والتكعيب (م³)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = "اختر هل السيارة تتألف من رأس وذنب أم رأس فقط:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "2",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "تكوين السيارة والتكعيب (م³)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "اختر التكوين (رأس وذنب أو رأس فقط) ثم أدخل المقاسات المعتمدة",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
                     // Interactive Toggle Selection
                     Row(
@@ -567,25 +642,25 @@ fun NewEntryScreen(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .border(
                                     width = if (isBoth) 2.dp else 1.dp,
-                                    color = if (isBoth) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(12.dp)
+                                    color = if (isBoth) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(14.dp)
                                 )
                                 .clickable { viewModel.onHasHeadAndTailChange(true) }
                                 .testTag("select_head_and_tail"),
-                            color = if (isBoth) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                            color = if (isBoth) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                         ) {
                             Column(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier.padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LocalShipping,
                                     contentDescription = null,
                                     tint = if (isBoth) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(26.dp)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -607,25 +682,25 @@ fun NewEntryScreen(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .border(
                                     width = if (isHeadOnly) 2.dp else 1.dp,
-                                    color = if (isHeadOnly) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(12.dp)
+                                    color = if (isHeadOnly) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(14.dp)
                                 )
                                 .clickable { viewModel.onHasHeadAndTailChange(false) }
                                 .testTag("select_head_only"),
-                            color = if (isHeadOnly) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+                            color = if (isHeadOnly) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                         ) {
                             Column(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier.padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LocalShipping,
                                     contentDescription = null,
                                     tint = if (isHeadOnly) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(26.dp)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -660,6 +735,7 @@ fun NewEntryScreen(
                             // Dimensions calculator shortcut button
                             OutlinedButton(
                                 onClick = { viewModel.openCalcDialog(CalcTarget.HEAD) },
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.testTag("calc_head_button")
                             ) {
                                 Icon(
@@ -679,8 +755,17 @@ fun NewEntryScreen(
                                 if (it.isNotBlank()) viewModel.headVolumeError.value = null
                             },
                             placeholder = { Text("مثال: 14.50") },
-                            suffix = { Text("م³", fontWeight = FontWeight.Bold) },
+                            suffix = { Text("م³", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
                             isError = headVolumeError != null,
                             supportingText = {
                                 if (headVolumeError != null) {
@@ -716,6 +801,7 @@ fun NewEntryScreen(
                                 )
                                 OutlinedButton(
                                     onClick = { viewModel.openCalcDialog(CalcTarget.TAIL) },
+                                    shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.testTag("calc_tail_button")
                                 ) {
                                     Icon(
@@ -735,8 +821,17 @@ fun NewEntryScreen(
                                     if (it.isNotBlank()) viewModel.tailVolumeError.value = null
                                 },
                                 placeholder = { Text("مثال: 18.00") },
-                                suffix = { Text("م³", fontWeight = FontWeight.Bold) },
+                                suffix = { Text("م³", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                                    focusedLabelColor = MaterialTheme.colorScheme.secondary,
+                                    cursorColor = MaterialTheme.colorScheme.secondary
+                                ),
                                 isError = tailVolumeError != null,
                                 supportingText = {
                                     if (tailVolumeError != null) {
@@ -754,32 +849,33 @@ fun NewEntryScreen(
                         }
                     }
 
-                    // Live Total Volume Summary Card
+                    // Live Total Volume Summary Card (2026 glowing high-contrast style)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(18.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
                                 Text(
                                     text = "إجمالي التكعيب الكلي:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
-                                    text = if (hasHeadAndTail) "مجموع (الرأس + الذنب)" else "تكعيب الرأس المفرد",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    text = if (hasHeadAndTail) "مجموع حمولة (الرأس + الذنب)" else "تكعيب حمولة الرأس المفرد",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                                 )
                             }
                             Text(
@@ -797,22 +893,50 @@ fun NewEntryScreen(
             // Section 3: Extensions (الوصلات)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text(
-                        text = "3. معلومات الوصلات (الزوائد والارتفاعات)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "3",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "معلومات الوصلات (الزوائد والارتفاعات)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "حدد هل يحتوي صندوق الشاحنة على وصلات خشبية أو حديدية إضافية",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -828,7 +952,8 @@ fun NewEntryScreen(
                             Text(
                                 text = if (hasExtensions) "تحتوي على وصلات إضافية" else "بدون وصلات (صندوق قياسي)",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (hasExtensions) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (hasExtensions) FontWeight.Bold else FontWeight.Normal
                             )
                         }
 
@@ -861,6 +986,15 @@ fun NewEntryScreen(
                                     tint = SuccessGreen
                                 )
                             },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                                focusedBorderColor = SuccessGreen,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                                focusedLabelColor = SuccessGreen,
+                                cursorColor = SuccessGreen
+                            ),
                             singleLine = true,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -873,100 +1007,77 @@ fun NewEntryScreen(
             // Section: Camera Photos (من الكاميرا حصراً لجدية وتأكيد الموضوع)
             CameraPhotoSection(viewModel = viewModel)
 
-            // Section 4: Extra Details (نوع المادة والموقع والملاحظات)
+            // Section 4: Notes Only (ملاحظات فقط حسب طلب المستخدم بدقة وبشكل حضاري لعام 2026)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text(
-                        text = "4. تفاصيل إضافية (اختياري)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    // Quick material chips
-                    Text(
-                        text = "نوع الحمولة / المادة:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        combinedMaterials.forEach { mat ->
-                            val isSelected = materialType == mat
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    viewModel.materialType.value = if (isSelected) "" else mat
-                                },
-                                label = { Text(mat, fontSize = 12.sp) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = materialType,
-                        onValueChange = { viewModel.materialType.value = it },
-                        label = { Text("نوع المادة") },
-                        placeholder = { Text("أو اكتب نوع المادة يدوياً") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("material_type_input")
-                    )
-
-                    // Site / Project with suggestions
-                    OutlinedTextField(
-                        value = siteLocation,
-                        onValueChange = { viewModel.siteLocation.value = it },
-                        label = { Text("الموقع / المشروع / الكسارة") },
-                        placeholder = { Text("مثال: مشروع المطار أو كسارة الشمال") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("site_location_input")
-                    )
-
-                    if (knownSites.isNotEmpty() && siteLocation.isBlank()) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "مواقع سابقة:",
+                                text = "4",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "ملاحظات إضافية (اختياري)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "دوّن أية تفاصيل خاصة بالحمولة، الشروط، أو تعليمات السائق",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            knownSites.take(3).forEach { site ->
-                                SuggestionChip(
-                                    onClick = { viewModel.siteLocation.value = site },
-                                    label = { Text(site, fontSize = 11.sp) }
-                                )
-                            }
                         }
                     }
 
                     OutlinedTextField(
                         value = notes,
                         onValueChange = { viewModel.notes.value = it },
-                        label = { Text("ملاحظات") },
-                        placeholder = { Text("أية ملاحظات حول الحمولة أو القياس") },
-                        maxLines = 3,
+                        label = { Text("الملاحظات") },
+                        placeholder = { Text("اكتب أية ملاحظات ميدانية هنا...") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Notes,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        minLines = 3,
+                        maxLines = 5,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("notes_input")

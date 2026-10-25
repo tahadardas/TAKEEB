@@ -13,20 +13,24 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
     primary = AmberSecondary,
-    onPrimary = Slate900,
-    primaryContainer = Slate800,
-    onPrimaryContainer = AmberSecondary,
+    onPrimary = Color(0xFF1E1500),
+    primaryContainer = AmberContainerDark,
+    onPrimaryContainer = OnAmberContainerDark,
     secondary = CyanSecondary,
-    onSecondary = Slate900,
-    secondaryContainer = Slate700,
-    onSecondaryContainer = CyanContainerLight,
-    background = Slate900,
-    onBackground = Color.White,
-    surface = Slate800,
-    onSurface = Color.White,
-    surfaceVariant = Slate700,
-    onSurfaceVariant = Slate100,
-    outline = Slate600
+    onSecondary = Color(0xFF031A2E),
+    secondaryContainer = CyanContainerDark,
+    onSecondaryContainer = OnCyanContainerDark,
+    background = ObsidianCanvasDark,
+    onBackground = Slate50,
+    surface = ObsidianCardDark,
+    onSurface = Slate50,
+    surfaceVariant = ObsidianInputDark,
+    onSurfaceVariant = Slate200,
+    outline = ObsidianBorderDark,
+    outlineVariant = Color(0xFF1F2A3F),
+    error = ErrorRed,
+    errorContainer = ErrorRedContainerDark,
+    onErrorContainer = OnErrorRedContainerDark
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -38,13 +42,17 @@ private val LightColorScheme = lightColorScheme(
     onSecondary = Color.White,
     secondaryContainer = CyanContainerLight,
     onSecondaryContainer = OnCyanContainerLight,
-    background = Slate50,
+    background = SilkCanvasLight,
     onBackground = Slate900,
-    surface = Color.White,
+    surface = SilkCardLight,
     onSurface = Slate900,
-    surfaceVariant = Slate100,
+    surfaceVariant = SilkInputLight,
     onSurfaceVariant = Slate700,
-    outline = Slate600
+    outline = SilkBorderLight,
+    outlineVariant = Slate300,
+    error = ErrorRed,
+    errorContainer = ErrorRedContainer,
+    onErrorContainer = Color(0xFF991B1B)
 )
 
 @Composable
