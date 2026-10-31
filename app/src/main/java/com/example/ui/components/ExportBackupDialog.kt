@@ -194,13 +194,13 @@ fun ExportBackupDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "مجلد التطبيق في «ملفاتي»: فشنثثلالاشيشلا",
+                                    text = "مجلد التطبيق الرئيسي في «ملفاتي»: تكعيب الغضب",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "تُحفظ ملفات SQLite والنسخ الاحتياطية تلقائياً في «ملفات_البرنامج».",
+                                    text = "مباشرة في الواجهة الرئيسية لملفاتي، وتُحفظ ملفات SQLite والنسخ في «ملفات_البرنامج».",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

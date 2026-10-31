@@ -94,9 +94,43 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         _isDarkTheme.value = !currentIsDark
     }
 
+    private var appContext: Context? = null
+
     // --- UI Event messages ---
     private val _uiEvents = MutableSharedFlow<UiMessage>()
     val uiEvents: SharedFlow<UiMessage> = _uiEvents.asSharedFlow()
+
+    /**
+     * Called on app startup:
+     * 1. If internal database is empty (e.g. fresh install / APK update / data wipe),
+     *    automatically detects and restores candidate backup from the dedicated public folder
+     *    تكعيب الغضب/ملفات_البرنامج/قاعدة_بيانات_السيارات_المعتمدة.sqlite
+     * 2. If internal database already contains records, updates the master backup snapshot in the public folder.
+     */
+    fun autoSyncOrRestoreOnStart(context: Context) {
+        appContext = context.applicationContext
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val entriesSnapshot = repository.getAllEntriesSnapshot()
+                if (entriesSnapshot.isEmpty()) {
+                    val candidateBackup = ExportManager.findMasterOrLatestBackup(context)
+                    if (candidateBackup != null && candidateBackup.exists() && candidateBackup.length() > 0L) {
+                        val uri = Uri.fromFile(candidateBackup)
+                        val result = ExportManager.restoreBackup(context, uri, repository)
+                        if (result.success && result.totalCount > 0) {
+                            _uiEvents.emit(
+                                UiMessage("تم استرجاع وتحديث بيانات السيارات تلقائياً (${result.totalCount} سيارة) وحمايتها من الفقدان")
+                            )
+                        }
+                    }
+                } else {
+                    ExportManager.saveMasterAutoBackup(context)
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("TruckViewModel", "Auto-sync error: ${e.message}")
+            }
+        }
+    }
 
     // --- Form State ---
     var editingEntryId = MutableStateFlow<Long?>(null)
@@ -681,6 +715,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                 _uiEvents.emit(UiMessage("تم حفظ بيانات السيارة والتكعيب بنجاح"))
             }
 
+            appContext?.let { ExportManager.saveMasterAutoBackup(it) }
             resetForm()
             selectedTab.value = 1 // Switch to records list
         }
@@ -698,6 +733,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
         val entry = entryPendingDelete.value ?: return
         viewModelScope.launch {
             repository.delete(entry)
+            appContext?.let { ExportManager.saveMasterAutoBackup(it) }
             entryPendingDelete.value = null
             _uiEvents.emit(UiMessage("تم حذف بيانات السيارة بنجاح"))
         }
@@ -778,7 +814,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                             title = "مشاركة النسخة الاحتياطية المضغوطة شاملة الصور (واتساب/ملفاتي)"
                         )
                     }
-                    _uiEvents.emit(UiMessage("تم تجهيز النسخة الاحتياطية وحفظ نسخة في مجلد فشنثثلالاشيشلا في ملفاتي"))
+                    _uiEvents.emit(UiMessage("تم تجهيز النسخة الاحتياطية وحفظ نسخة في مجلد تكعيب الغضب في ملفاتي"))
                 } else {
                     val uri = ExportManager.createBackupJson(context, list, mods)
                     withContext(Dispatchers.Main) {
@@ -821,7 +857,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                         title = "مشاركة ملف قاعدة بيانات SQLite الأصلي (.sqlite)"
                     )
                 }
-                _uiEvents.emit(UiMessage("تم تجهيز نسخة قاعدة بيانات SQLite وحفظها في مجلد فشنثثلالاشيشلا في ملفاتي"))
+                _uiEvents.emit(UiMessage("تم تجهيز نسخة قاعدة بيانات SQLite وحفظها في مجلد تكعيب الغضب في ملفاتي"))
             } catch (e: Exception) {
                 _uiEvents.emit(UiMessage("حدث خطأ أثناء تصدير قاعدة بيانات SQLite: ${e.localizedMessage}", isError = true))
             } finally {
@@ -850,6 +886,7 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                 _uiEvents.emit(
                     UiMessage("تمت الاستعادة بنجاح:$photoText تم تحديث ${result.updatedCount} سيارة، وإضافة ${result.addedCount} سيارة جديدة بدون مسح أي بيانات سابقة!")
                 )
+                appContext?.let { ExportManager.saveMasterAutoBackup(it) }
                 selectedTab.value = 1 // Switch to list
             } catch (e: Exception) {
                 _uiEvents.emit(UiMessage("فشلت استعادة النسخة الاحتياطية: ${e.localizedMessage}", isError = true))
@@ -1177,12 +1214,14 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
             _uiEvents.emit(
                 UiMessage("تم تسجيل التعديل بنجاح! التكعيب الحالي: ${String.format(Locale.US, "%.2f", newTotal)} م³ (الفرق: $diffSign م³)")
             )
+            appContext?.let { ExportManager.saveMasterAutoBackup(it) }
         }
     }
 
     fun deleteModification(modification: TruckModification) {
         viewModelScope.launch {
             repository.deleteModification(modification)
+            appContext?.let { ExportManager.saveMasterAutoBackup(it) }
             _uiEvents.emit(UiMessage("تم حذف سجل التعديل"))
         }
     }

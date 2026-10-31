@@ -9,47 +9,53 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 
 /**
- * Manages the dedicated public storage folder requested by the user: "فشنثثلالاشيشلا"
- * located in user storage ("ملفاتي" / Documents), containing:
+ * Manages the dedicated public storage folder requested by the user: "تكعيب الغضب"
+ * located directly at the root of user storage ("ملفاتي" / Internal Storage), containing:
  * - ملفات_البرنامج (App files: backups, reports, exports)
- * - صور_السيارات (Truck documentation camera photos)
+ * - صور_السيارات (Truck documentation photos)
  */
 object AppFolderManager {
 
-    const val MAIN_FOLDER_NAME = "فشنثثلالاشيشلا"
+    const val MAIN_FOLDER_NAME = "تكعيب الغضب"
+    const val OLD_FOLDER_NAME = "فشنثثلالاشيشلا"
     const val SUB_APP_FILES = "ملفات_البرنامج"
     const val SUB_PHOTOS = "صور_السيارات"
 
     /**
      * Resolves the main directory in shared storage ("ملفاتي")
+     * Prioritizes the root level of internal storage so the user sees it immediately upon opening "ملفاتي"
      */
     fun getMainFolder(context: Context): File {
-        // Try Documents directory in shared storage first
-        val docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-        val mainDocs = File(docsDir, MAIN_FOLDER_NAME)
-        if (!mainDocs.exists()) {
-            mainDocs.mkdirs()
-        }
-
-        // Also try root of external storage if writable
+        // 1. Primary: Direct root of user storage ("ملفاتي" / Internal Storage Root)
         try {
             val rootDir = Environment.getExternalStorageDirectory()
             val rootFolder = File(rootDir, MAIN_FOLDER_NAME)
             if (!rootFolder.exists()) {
                 rootFolder.mkdirs()
             }
+            if (rootFolder.exists() && rootFolder.canWrite()) {
+                scanFile(context, rootFolder)
+                return rootFolder
+            }
         } catch (e: Exception) {
-            Log.w("AppFolderManager", "Could not create root folder: ${e.message}")
+            Log.w("AppFolderManager", "Root folder creation notice: ${e.message}")
         }
 
-        // Fallback to app external files dir if Documents cannot be written
-        if (!mainDocs.exists() && !mainDocs.canWrite()) {
-            val fallback = File(context.getExternalFilesDir(null), MAIN_FOLDER_NAME)
-            fallback.mkdirs()
-            return fallback
+        // 2. Secondary fallback: Documents directory in shared storage
+        val docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        val mainDocs = File(docsDir, MAIN_FOLDER_NAME)
+        if (!mainDocs.exists()) {
+            mainDocs.mkdirs()
+        }
+        if (mainDocs.exists() && mainDocs.canWrite()) {
+            scanFile(context, mainDocs)
+            return mainDocs
         }
 
-        return mainDocs
+        // 3. Fallback to app external files dir if root and Documents cannot be written
+        val fallback = File(context.getExternalFilesDir(null), MAIN_FOLDER_NAME)
+        if (!fallback.exists()) fallback.mkdirs()
+        return fallback
     }
 
     /**
@@ -134,12 +140,56 @@ object AppFolderManager {
     }
 
     /**
-     * Ensures all folders are created on app startup
+     * Automatically migrates data from previous old folder names (e.g. فشنثثلالاشيشلا)
+     * into the new root folder "تكعيب الغضب" so no user files are lost
+     */
+    fun migrateOldFolderIfExists(context: Context) {
+        try {
+            val targetMain = getMainFolder(context)
+            val potentialOldLocations = listOf(
+                File(Environment.getExternalStorageDirectory(), OLD_FOLDER_NAME),
+                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), OLD_FOLDER_NAME),
+                File(context.getExternalFilesDir(null), OLD_FOLDER_NAME)
+            )
+
+            for (oldDir in potentialOldLocations) {
+                if (oldDir.exists() && oldDir.isDirectory) {
+                    copyDirectoryRecursively(context, oldDir, targetMain)
+                    try {
+                        oldDir.deleteRecursively()
+                    } catch (e: Exception) {
+                        Log.w("AppFolderManager", "Could not delete old folder: ${e.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("AppFolderManager", "Migration from old folder error: ${e.message}")
+        }
+    }
+
+    private fun copyDirectoryRecursively(context: Context, source: File, destination: File) {
+        if (!destination.exists()) destination.mkdirs()
+        source.listFiles()?.forEach { file ->
+            val destChild = File(destination, file.name)
+            if (file.isDirectory) {
+                copyDirectoryRecursively(context, file, destChild)
+            } else {
+                if (!destChild.exists() || destChild.length() == 0L) {
+                    file.copyTo(destChild, overwrite = true)
+                    scanFile(context, destChild)
+                }
+            }
+        }
+    }
+
+    /**
+     * Ensures all folders are created and old data migrated on app startup
      */
     fun initializeFolders(context: Context) {
         try {
             getAppFilesFolder(context)
             getPhotosFolder(context)
+            migrateOldFolderIfExists(context)
         } catch (e: Exception) {
             Log.e("AppFolderManager", "Folder initialization error: ${e.message}")
         }

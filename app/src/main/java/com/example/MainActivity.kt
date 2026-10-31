@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         com.example.util.AppFolderManager.initializeFolders(applicationContext)
+        viewModel.autoSyncOrRestoreOnStart(applicationContext)
 
         // Load saved theme preference
         val prefs = getSharedPreferences("app_theme_prefs", Context.MODE_PRIVATE)

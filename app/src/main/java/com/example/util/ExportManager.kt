@@ -47,7 +47,7 @@ object ExportManager {
 
     /**
      * Generates a CSV file of all truck entries with UTF-8 BOM for Excel Arabic compatibility
-     * Also saves a copy in the dedicated folder: فشنثثلالاشيشلا/ملفات_البرنامج
+     * Also saves a copy in the dedicated folder: تكعيب الغضب/ملفات_البرنامج
      */
     fun exportToCsv(context: Context, entries: List<TruckEntry>): Uri {
         val dateFormatter = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale("ar"))
@@ -122,7 +122,7 @@ object ExportManager {
 
     /**
      * Generates a high-quality PDF Report using Android PdfDocument
-     * Also saves a copy in the dedicated folder: فشنثثلالاشيشلا/ملفات_البرنامج
+     * Also saves a copy in the dedicated folder: تكعيب الغضب/ملفات_البرنامج
      */
     fun exportToPdf(context: Context, entries: List<TruckEntry>): Uri {
         val document = PdfDocument()
@@ -377,7 +377,7 @@ object ExportManager {
      * Creates a COMPRESSED ZIP BACKUP containing:
      * - backup.json (Truck database records, modification history, and metadata)
      * - photos/ (All referenced camera photo files for trucks and modifications)
-     * Also saves a copy in the dedicated folder: فشنثثلالاشيشلا/ملفات_البرنامج
+     * Also saves a copy in the dedicated folder: تكعيب الغضب/ملفات_البرنامج
      */
     fun createCompressedBackupZip(
         context: Context,
@@ -480,7 +480,7 @@ object ExportManager {
      * Exports the native SQLite database file directly (truck_cubic_database.sqlite):
      * Runs WAL checkpoint to ensure all uncommitted data in WAL is flushed to the main file,
      * copies it into cacheDir with timestamp, saves a master copy in the dedicated folder:
-     * فشنثثلالاشيشلا/ملفات_البرنامج/TakeebGhadab_Database_[timestamp].sqlite
+     * تكعيب الغضب/ملفات_البرنامج/TakeebGhadab_Database_[timestamp].sqlite
      * and returns the FileProvider Uri for instant sharing via WhatsApp, Drive, etc.
      */
     fun exportSqliteDatabase(context: Context): Uri {
@@ -504,7 +504,7 @@ object ExportManager {
             }
         }
 
-        // Copy to dedicated public folder: فشنثثلالاشيشلا/ملفات_البرنامج
+        // Copy to dedicated public folder: تكعيب الغضب/ملفات_البرنامج
         AppFolderManager.copyFileToAppFiles(context, exportFile)
 
         return FileProvider.getUriForFile(
@@ -512,6 +512,66 @@ object ExportManager {
             "${context.packageName}.fileprovider",
             exportFile
         )
+    }
+
+    const val MASTER_SQLITE_FILENAME = "قاعدة_بيانات_السيارات_المعتمدة.sqlite"
+
+    /**
+     * Automatically saves a synchronized master copy of the SQLite database to:
+     * تكعيب الغضب/ملفات_البرنامج/قاعدة_بيانات_السيارات_المعتمدة.sqlite
+     * This protects user data from being wiped during updates or reinstalls.
+     */
+    fun saveMasterAutoBackup(context: Context) {
+        try {
+            val db = AppDatabase.getDatabase(context)
+            try {
+                db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").use { c ->
+                    c.moveToFirst()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "WAL checkpoint warning: ${e.message}")
+            }
+
+            val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
+            if (!dbFile.exists() || dbFile.length() == 0L) return
+
+            val targetDir = AppFolderManager.getAppFilesFolder(context)
+            val masterFile = File(targetDir, MASTER_SQLITE_FILENAME)
+
+            FileInputStream(dbFile).use { input ->
+                FileOutputStream(masterFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            AppFolderManager.scanFile(context, masterFile)
+            Log.d(TAG, "Saved master auto backup to ${masterFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save master auto backup: ${e.message}")
+        }
+    }
+
+    /**
+     * Finds the master SQLite backup or latest valid backup (.sqlite or .zip)
+     * in the public folder تكعيب الغضب/ملفات_البرنامج
+     */
+    fun findMasterOrLatestBackup(context: Context): File? {
+        return try {
+            val appFilesDir = AppFolderManager.getAppFilesFolder(context)
+            if (!appFilesDir.exists()) return null
+
+            val masterFile = File(appFilesDir, MASTER_SQLITE_FILENAME)
+            if (masterFile.exists() && masterFile.length() > 0L) {
+                return masterFile
+            }
+
+            val files = appFilesDir.listFiles() ?: return null
+            files
+                .filter { it.isFile && (it.name.endsWith(".sqlite") || it.name.endsWith(".zip") || it.name.endsWith(".db")) }
+                .maxByOrNull { it.lastModified() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finding backup file: ${e.message}")
+            null
+        }
     }
 
     /**
@@ -769,7 +829,7 @@ object ExportManager {
 
     /**
      * Restores from a compressed ZIP backup:
-     * - Unpacks photos into internal truck_photos AND public folder فشنثثلالاشيشلا/صور_السيارات
+     * - Unpacks photos into internal truck_photos AND public folder تكعيب الغضب/صور_السيارات
      * - Parses backup.json
      * - Remaps photo paths to current device's storage
      * - Merges / updates database records

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -31,19 +32,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import java.io.FileOutputStream
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -92,6 +97,25 @@ fun CameraPhotoSection(
                 viewModel.addCapturedPhoto(file.absolutePath)
                 com.example.util.AppFolderManager.copyPhotoToPublic(context, file)
                 Toast.makeText(context, "تم التقاط الصورة وحفظ نسخة في مجلد ملفاتي", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Gallery Photo Picker Launcher
+    val galleryPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 15)
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            var addedCount = 0
+            uris.forEach { uri ->
+                copyUriToInternalPhotos(context, uri)?.let { file ->
+                    viewModel.addCapturedPhoto(file.absolutePath)
+                    com.example.util.AppFolderManager.copyPhotoToPublic(context, file)
+                    addedCount++
+                }
+            }
+            if (addedCount > 0) {
+                Toast.makeText(context, "تم تحميل $addedCount صورة من المعرض وحفظ نسخة في ملفاتي", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -150,7 +174,7 @@ fun CameraPhotoSection(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CameraAlt,
+                            imageVector = Icons.Default.Collections,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(18.dp)
@@ -159,13 +183,13 @@ fun CameraPhotoSection(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "صور التوثيق (من الكاميرا حصراً)",
+                            text = "صور التوثيق (الكاميرا أو المعرض)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "التقاط صور حية لتأكيد وجدية التكعيب والحمولة",
+                            text = "التقاط صور حية أو اختيار صور من المعرض لتأكيد التكعيب والحمولة",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -174,7 +198,7 @@ fun CameraPhotoSection(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = SuccessGreen.copy(alpha = 0.15f)
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -183,43 +207,80 @@ fun CameraPhotoSection(
                         Icon(
                             imageVector = Icons.Default.Verified,
                             contentDescription = null,
-                            tint = SuccessGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "كاميرا حية",
+                            text = "كاميرا ومعرض",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = SuccessGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             }
 
-            // Camera Action Button
-            Button(
-                onClick = { checkAndLaunchCamera() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("take_camera_photo_button"),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+            // Dual Photo Action Buttons (Camera & Gallery)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "التقاط صورة من الكاميرا الآن",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Button(
+                    onClick = { checkAndLaunchCamera() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .testTag("take_camera_photo_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "التقاط بالكاميرا",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                FilledTonalButton(
+                    onClick = {
+                        galleryPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .testTag("pick_gallery_photo_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoLibrary,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "تحميل من المعرض",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
             }
 
             // Captured Photos List
@@ -297,7 +358,7 @@ fun CameraPhotoSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "معاينة صورة الكاميرا",
+                        text = "معاينة صورة السيارة",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -327,6 +388,26 @@ fun CameraPhotoSection(
                 }
             }
         )
+    }
+}
+
+internal fun copyUriToInternalPhotos(context: Context, uri: Uri): File? {
+    return try {
+        val photoDir = File(context.filesDir, "truck_photos")
+        if (!photoDir.exists()) photoDir.mkdirs()
+
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val randomSuffix = (1000..9999).random()
+        val photoFile = File(photoDir, "IMG_GALLERY_${timeStamp}_$randomSuffix.jpg")
+
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            FileOutputStream(photoFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        photoFile
+    } catch (e: Exception) {
+        null
     }
 }
 

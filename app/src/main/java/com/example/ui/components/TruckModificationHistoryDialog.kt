@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.TrendingFlat
 import androidx.compose.material3.AlertDialog
@@ -149,6 +151,24 @@ fun TruckModificationHistoryDialog(
                 viewModel.addNewModPhoto(file.absolutePath)
                 AppFolderManager.copyPhotoToPublic(context, file)
                 Toast.makeText(context, "تم التقاط صورة التعديل وحفظها", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val modGalleryPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            var addedCount = 0
+            uris.forEach { uri ->
+                copyUriToInternalPhotos(context, uri)?.let { file ->
+                    viewModel.addNewModPhoto(file.absolutePath)
+                    AppFolderManager.copyPhotoToPublic(context, file)
+                    addedCount++
+                }
+            }
+            if (addedCount > 0) {
+                Toast.makeText(context, "تمت إضافة $addedCount صورة للتعديل من المعرض وحفظها", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -672,27 +692,48 @@ fun TruckModificationHistoryDialog(
                                                             color = MaterialTheme.colorScheme.onSurface
                                                         )
                                                         Text(
-                                                            text = "كاميرا ميدانية حصرية للتوثيق",
+                                                            text = "التقاط بالكاميرا أو اختيار من المعرض",
                                                             style = MaterialTheme.typography.labelSmall,
                                                             color = MaterialTheme.colorScheme.primary
                                                         )
                                                     }
                                                 }
 
-                                                FilledTonalButton(
-                                                    onClick = { launchCameraCapture() },
-                                                    shape = RoundedCornerShape(10.dp),
-                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                    Spacer(modifier = Modifier.width(6.dp))
-                                                    Text(
-                                                        text = "التقاط صورة",
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        maxLines = 1,
-                                                        softWrap = false
-                                                    )
+                                                    FilledTonalButton(
+                                                        onClick = { launchCameraCapture() },
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = "كاميرا",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+
+                                                    FilledTonalButton(
+                                                        onClick = {
+                                                            modGalleryPickerLauncher.launch(
+                                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                                            )
+                                                        },
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(15.dp))
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = "معرض",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
                                                 }
                                             }
 

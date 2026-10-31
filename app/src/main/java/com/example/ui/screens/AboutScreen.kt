@@ -30,10 +30,12 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -363,9 +365,15 @@ fun AboutScreen(
                     )
 
                     FeatureBullet(
-                        icon = Icons.Default.CameraAlt,
-                        title = "توثيق بالصور من الكاميرا حصراً",
-                        description = "لضمان الجدية والمصداقية الميدانية، يلزم التقاط صور السيارة من كاميرا الهاتف مباشرة."
+                        icon = Icons.Default.Collections,
+                        title = "توثيق شامل بالصور (الكاميرا أو المعرض)",
+                        description = "إمكانية التقاط صور حية مباشرة بالكاميرا أو اختيار وتحميل صور جاهزة من معرض الصور مع الحفظ التلقائي في مجلد «تكعيب الغضب» في ملفاتي."
+                    )
+
+                    FeatureBullet(
+                        icon = Icons.Default.SystemUpdate,
+                        title = "تحديثات برمجية آمنة دون مسح البيانات",
+                        description = "عند تثبيت أي إصدار جديد، يتم ترحيل وتحديث قاعدة البيانات ودمج البيانات بأمان دون مسح أي سيارة، مع نظام نسخ احتياطي واستعادة ذاتية تلقائي."
                     )
 
                     FeatureBullet(
@@ -383,7 +391,7 @@ fun AboutScreen(
                     FeatureBullet(
                         icon = Icons.Default.Share,
                         title = "نسخ احتياطي مضغوط شامل الصور (ZIP)",
-                        description = "ضغط كامل سجلات السيارات والصور الملتقطة ومشاركتها عبر واتساب مع الحفظ التلقائي في مجلد «فشنثثلالاشيشلا» في ملفاتي."
+                        description = "ضغط كامل سجلات السيارات والصور الملتقطة ومشاركتها عبر واتساب مع الحفظ التلقائي في مجلد «تكعيب الغضب» في ملفاتي."
                     )
                 }
             }
