@@ -73,6 +73,8 @@ import com.example.ui.TruckViewModel
 import com.example.ui.TruckViewModelFactory
 import com.example.ui.components.DimensionsCalculatorDialog
 import com.example.ui.components.ExportBackupDialog
+import com.example.ui.components.VpsSyncDialog
+import androidx.compose.material.icons.filled.Dns
 import com.example.ui.screens.AboutScreen
 import com.example.ui.screens.NewEntryScreen
 import com.example.ui.screens.RecordsListScreen
@@ -158,6 +160,9 @@ fun TruckCubicApp(
     // Include the Export and Backup Dialog
     ExportBackupDialog(viewModel = viewModel)
 
+    // Include the VPS Server Sync Dialog
+    VpsSyncDialog(viewModel = viewModel)
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isWideScreen = maxWidth >= 720.dp
 
@@ -217,6 +222,16 @@ fun TruckCubicApp(
                             Icon(
                                 imageVector = Icons.Default.Sms,
                                 contentDescription = "رسائل SMS والأسعار",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.showVpsSyncDialog.value = true },
+                            modifier = Modifier.testTag("top_bar_vps_sync_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Dns,
+                                contentDescription = "مزامنة سيرفر الشركة VPS",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }

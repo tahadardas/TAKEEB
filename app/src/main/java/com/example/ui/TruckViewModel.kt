@@ -11,6 +11,8 @@ import com.example.data.repository.TruckRepository
 import com.example.util.ContactPickerHelper
 import com.example.util.ExportManager
 import com.example.util.SmsBroadcastHelper
+import com.example.util.VpsSyncManager
+import com.example.util.VpsSyncPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,9 +108,11 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
      *    automatically detects and restores candidate backup from the dedicated public folder
      *    تكعيب الغضب/ملفات_البرنامج/قاعدة_بيانات_السيارات_المعتمدة.sqlite
      * 2. If internal database already contains records, updates the master backup snapshot in the public folder.
+     * 3. Loads VPS settings and triggers automatic background sync if enabled.
      */
     fun autoSyncOrRestoreOnStart(context: Context) {
         appContext = context.applicationContext
+        loadVpsSettings(context)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val entriesSnapshot = repository.getAllEntriesSnapshot()
@@ -126,8 +130,117 @@ class TruckViewModel(private val repository: TruckRepository) : ViewModel() {
                 } else {
                     ExportManager.saveMasterAutoBackup(context)
                 }
+
+                // Automatic background VPS sync if enabled
+                if (VpsSyncPreferences.isAutoSyncEnabled(context) && VpsSyncPreferences.getServerUrl(context).isNotBlank()) {
+                    performVpsSync(context)
+                }
             } catch (e: Exception) {
                 android.util.Log.w("TruckViewModel", "Auto-sync error: ${e.message}")
+            }
+        }
+    }
+
+    // --- VPS Server Synchronization State ---
+    val showVpsSyncDialog = MutableStateFlow(false)
+    val vpsServerUrl = MutableStateFlow("")
+    val vpsApiKey = MutableStateFlow("")
+    val vpsAutoSyncEnabled = MutableStateFlow(false)
+    val isVpsSyncing = MutableStateFlow(false)
+    val vpsSyncStatusMessage = MutableStateFlow<String?>(null)
+    val vpsLastSyncTimeFormatted = MutableStateFlow("لم تتم المزامنة بعد")
+    val vpsIsConnected = MutableStateFlow<Boolean?>(null)
+
+    fun loadVpsSettings(context: Context) {
+        vpsServerUrl.value = VpsSyncPreferences.getServerUrl(context)
+        vpsApiKey.value = VpsSyncPreferences.getApiKey(context)
+        vpsAutoSyncEnabled.value = VpsSyncPreferences.isAutoSyncEnabled(context)
+        vpsSyncStatusMessage.value = VpsSyncPreferences.getLastSyncStatus(context)
+        val lastTime = VpsSyncPreferences.getLastSyncTime(context)
+        vpsLastSyncTimeFormatted.value = if (lastTime > 0) {
+            java.text.SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale("ar")).format(java.util.Date(lastTime))
+        } else {
+            "لم تتم المزامنة بعد"
+        }
+    }
+
+    fun saveVpsSettings(context: Context, url: String, key: String, autoSync: Boolean) {
+        VpsSyncPreferences.setServerUrl(context, url)
+        VpsSyncPreferences.setApiKey(context, key)
+        VpsSyncPreferences.setAutoSyncEnabled(context, autoSync)
+        vpsServerUrl.value = url.trim().removeSuffix("/")
+        vpsApiKey.value = key.trim()
+        vpsAutoSyncEnabled.value = autoSync
+        viewModelScope.launch {
+            _uiEvents.emit(UiMessage("تم حفظ إعدادات سيرفر VPS بنجاح"))
+        }
+    }
+
+    fun testVpsConnection(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            isVpsSyncing.value = true
+            val (ok, message) = VpsSyncManager.testConnection(vpsServerUrl.value, vpsApiKey.value)
+            vpsIsConnected.value = ok
+            vpsSyncStatusMessage.value = message
+            isVpsSyncing.value = false
+            _uiEvents.emit(UiMessage(message, isError = !ok))
+        }
+    }
+
+    fun performVpsSync(context: Context) {
+        val url = vpsServerUrl.value.ifBlank { VpsSyncPreferences.getServerUrl(context) }
+        val key = vpsApiKey.value.ifBlank { VpsSyncPreferences.getApiKey(context) }
+        if (url.isBlank()) {
+            viewModelScope.launch {
+                _uiEvents.emit(UiMessage("يرجى إدخال رابط سيرفر VPS أولاً في الإعدادات", isError = true))
+            }
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            isVpsSyncing.value = true
+            vpsSyncStatusMessage.value = "جاري الاتصال وتبادل البيانات والصور مع السيرفر..."
+            try {
+                val lastTime = VpsSyncPreferences.getLastSyncTime(context)
+                val summary = VpsSyncManager.syncWithServer(
+                    context = context,
+                    repository = repository,
+                    serverUrl = url,
+                    apiKey = key,
+                    lastSyncTime = lastTime
+                )
+
+                if (summary.success) {
+                    VpsSyncPreferences.setLastSyncTime(context, summary.serverTime)
+                    val timeStr = java.text.SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale("ar")).format(java.util.Date(summary.serverTime))
+                    vpsLastSyncTimeFormatted.value = timeStr
+                    vpsIsConnected.value = true
+
+                    val msg = buildString {
+                        append("اكتملت المزامنة مع السيرفر بنجاح! ")
+                        if (summary.pulledTrucks > 0) append("استُلمت ${summary.pulledTrucks} سيارة جديدة، ")
+                        if (summary.downloadedPhotos > 0) append("حُمّلت ${summary.downloadedPhotos} صورة جديدة، ")
+                        if (summary.uploadedPhotos > 0) append("رُفعت ${summary.uploadedPhotos} صورة، ")
+                        if (summary.pushedTrucks > 0) append("رُفعت ${summary.pushedTrucks} سيارة للسيرفر.")
+                        if (summary.pulledTrucks == 0 && summary.pushedTrucks == 0) append("جميع السجلات والصور متطابقة ومحدثة مع السيرفر.")
+                    }
+                    vpsSyncStatusMessage.value = msg
+                    VpsSyncPreferences.setLastSyncStatus(context, msg, isSuccess = true)
+                    _uiEvents.emit(UiMessage(msg))
+                } else {
+                    vpsIsConnected.value = false
+                    val err = summary.errorMessage ?: "فشلت المزامنة مع السيرفر"
+                    vpsSyncStatusMessage.value = err
+                    VpsSyncPreferences.setLastSyncStatus(context, err, isSuccess = false)
+                    _uiEvents.emit(UiMessage(err, isError = true))
+                }
+            } catch (e: Exception) {
+                vpsIsConnected.value = false
+                val err = "خطأ في المزامنة: ${e.localizedMessage}"
+                vpsSyncStatusMessage.value = err
+                _uiEvents.emit(UiMessage(err, isError = true))
+            } finally {
+                isVpsSyncing.value = false
             }
         }
     }
