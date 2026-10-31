@@ -1,20 +1,25 @@
 {
   "name": "takeeb-ghadab-vps-server",
   "version": "1.0.0",
-  "description": "سيرفر المزامنة المركزي لتطبيق تكعيب الغضب - متوافق مع لوحة تحكم Plesk ونظام Ubuntu",
+  "description": "سيرفر المزامنة المركزي لتطبيق تكعيب الغضب - بدون اعتمادات C++ ويعمل على أي إصدار Node.js في Plesk و Ubuntu",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["truck-cubic", "sync-server", "plesk", "ubuntu"],
+  "keywords": [
+    "truck-cubic",
+    "sync-server",
+    "plesk",
+    "ubuntu",
+    "pure-js"
+  ],
   "author": "Tak'eeb Al-Ghadab",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "multer": "^1.4.5-lts.1",
-    "sqlite3": "^5.1.7"
+    "multer": "^1.4.5-lts.1"
   }
 }
